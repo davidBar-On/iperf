@@ -186,6 +186,7 @@ void    iperf_set_test_client_username(struct iperf_test *ipt, const char *clien
 void    iperf_set_test_client_password(struct iperf_test *ipt, const char *client_password);
 void    iperf_set_test_client_rsa_pubkey(struct iperf_test *ipt, const char *client_rsa_pubkey_base64);
 void    iperf_set_test_server_authorized_users(struct iperf_test *ipt, const char *server_authorized_users);
+void    iperf_set_test_server_skew_threshold(struct iperf_test *ipt, int server_skew_threshold);
 void    iperf_set_test_server_rsa_privkey(struct iperf_test *ipt, const char *server_rsa_privkey_base64);
 #endif // HAVE_SSL
 
@@ -367,7 +368,11 @@ enum {
     IEBADPORT = 26,	    // Bad port number
     IETOTALRATE = 27,       // Total required bandwidth is larger than server's limit
     IETOTALINTERVAL = 28,   // Invalid time interval for calculating average data rate
+<<<<<<< HEAD
     IEMAXSERVERS = 29,      // Maximum number of servers servers is too high
+=======
+    IESKEWTHRESHOLD = 29,   // Invalid value specified as skew threshold
+>>>>>>> master
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
