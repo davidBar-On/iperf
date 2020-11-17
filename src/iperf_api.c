@@ -931,7 +931,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"fq-rate", required_argument, NULL, OPT_FQ_RATE},
 	{"pacing-timer", required_argument, NULL, OPT_PACING_TIMER},
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
-        {"max-servers", required_argument, NULL, OPT_MAX_SERVERS}, // >>>> #1066 ADD <<<<
+        {"max-servers", required_argument, NULL, OPT_MAX_SERVERS},
         {"debug", no_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1342,9 +1342,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		break;
 	    case OPT_CONNECT_TIMEOUT:
 		test->settings->connect_timeout = unit_atoi(optarg);
-		/* client_flag = 1; >>>>> #1066 commented out <<<< */
 		break;
-            /* >>>>>>> #1066 ADD */
 	    case OPT_MAX_SERVERS:
 		test->settings->max_servers = unit_atoi(optarg);
                 if (test->settings->max_servers < 1
@@ -1355,7 +1353,6 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		    }
 		server_flag = 1;
 		break;
-            /* >>>>>>> #1066 ADD */
 	    case 'h':
 		usage_long(stdout);
 		exit(0);
@@ -2523,7 +2520,7 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->bytes = 0;
     testp->settings->blocks = 0;
     testp->settings->connect_timeout = -1;
-    testp->settings->max_servers = 1;     // >>>> #1066 ADD <<<<<<
+    testp->settings->max_servers = 1;
     memset(testp->cookie, 0, COOKIE_SIZE);
 
     testp->multisend = 10;	/* arbitrary */

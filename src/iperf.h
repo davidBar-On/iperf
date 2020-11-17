@@ -152,7 +152,7 @@ struct iperf_settings
     iperf_size_t blocks;            /* number of blocks (packets) to send */
     char      unit_format;          /* -f */
     int       num_ostreams;         /* SCTP initmsg settings */
-    int       max_servers; /* Number of servers that can run in parallel */ // >>>>> #1066 ADD <<<<<
+    int       max_servers; /* Number of servers that can run in parallel */
 #if defined(HAVE_SSL)
     char      *authtoken;           /* Authentication token */
     char      *client_username;
@@ -284,11 +284,9 @@ struct iperf_test
 
     int	      ctrl_sck_mss;			/* MSS for the control channel */
 
-    /* >>>>>>>> #1066 ADD */
     char      **argv;           /* Original main() argv */
     int       argc;             /* Original main() argc */
     int       *servers_list;    /* For list of active servers */
-    /* <<<<<<<< #1066 ADD */
 
 #if defined(HAVE_SSL)
     char      *server_authorized_users;
@@ -379,7 +377,7 @@ struct iperf_test
 /* default settings */
 #define PORT 5201  /* default port to listen on (don't use the same port as iperf2) */
 #define uS_TO_NS 1000
-#define mS_TO_US 1000   // >>>> #1066 ADD <<<<<<
+#define mS_TO_US 1000
 #define SEC_TO_US 1000000LL
 #define UDP_RATE (1024 * 1024) /* 1 Mbps */
 #define OMIT 0 /* seconds */

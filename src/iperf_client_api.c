@@ -321,10 +321,6 @@ iperf_handle_message_client(struct iperf_test *test)
             errno = ntohl(err);
             return -1;
         default:
-            /* >>>>>>> #1066 REPLACE ****************************
-            i_errno = IEMESSAGE;
-            return -1;
-            *************** #1066 REPLACE *************************/
             if (test->state < CONTROL_PORT_MIN || test->state > CONTROL_PORT_MAX) { // Error
                 i_errno = IEMESSAGE;
                 return -1;
@@ -366,7 +362,6 @@ iperf_handle_message_client(struct iperf_test *test)
             execv(argv[0], argv);
             iperf_printf(test, "FAILED restarting client with new server control port=%d\n", port);
             return -1;          // If `exec returned` it means that it failed
-            /* <<<<<<< #1066 REPLACE ****************************/
     }
 
     return 0;

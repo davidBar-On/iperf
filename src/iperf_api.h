@@ -98,10 +98,10 @@ typedef uint64_t iperf_size_t;
 #define DISPLAY_RESULTS 14
 #define IPERF_START 15
 #define IPERF_DONE 16
-/* >>>>> #1066 ADD */
+
 #define CONTROL_PORT_MIN 101
 #define CONTROL_PORT_MAX 116
-/* <<<<<< #1066 ADD */
+
 #define ACCESS_DENIED (-1)
 #define SERVER_ERROR (-2)
 

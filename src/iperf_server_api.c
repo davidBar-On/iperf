@@ -37,7 +37,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/wait.h>   // >>>>> #1066 ADD <<<<<<
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -147,7 +147,6 @@ cleanup_server(struct iperf_test *test)
 }
 
 
-/* >>>>>>>>>>>>>> #1066 ADD */
 /*
  * Starting new copy of the server with new port number
 */
@@ -161,7 +160,7 @@ iperf_start_new_server(struct iperf_test *test)
     #define port_str_size 10
     char port_str[port_str_size];
     int port;
-    int port_offset;    // >>>> #1066 <<<<
+    int port_offset;
     int pid;
     int i;
     int process_status;
@@ -223,7 +222,6 @@ iperf_start_new_server(struct iperf_test *test)
     iperf_printf(test, "New server started - port=%d, pid=%d\n", port, pid);
     return port;
 }
-/* <<<<<<<<<<<<<< #1066 ADD */
 
 
 int
@@ -267,7 +265,6 @@ iperf_accept(struct iperf_test *test)
         if (test->on_connect)
             test->on_connect(test);
     } else {
-        /* >>>>>>>>>>>>>>>>>>>>>>> #1066 ADD */
         /* As this server is busy -
          * try to run another server and redirect the client to it.
         */
@@ -275,7 +272,6 @@ iperf_accept(struct iperf_test *test)
         port = iperf_start_new_server(test);
         if (port > test->server_port) 
             rbuf = CONTROL_PORT_MIN + (port - test->server_port);
-        /* <<<<<<<<<<<<<<<<<<<<<<< #1066 ADD */
         /*
         * If test is ongoing and started new server - redirect the client to it.
         * Otherwise, don't try to read from the socket.
@@ -406,14 +402,12 @@ server_reporter_timer_proc(TimerClientData client_data, struct iperf_time *nowP)
 	test->reporter_callback(test);
 }
 
-/* >>>>>>>> #1066 ADD */
 // Dummy time procedures for cases were other service times out (e.g. select()
 static void
 server_dummy_timer_proc(TimerClientData client_data, struct iperf_time *nowP)
 {
     return;
 }
-/* <<<<<<<< #1066 ADD */
 
 static int
 create_server_timers(struct iperf_test * test)
@@ -566,7 +560,6 @@ iperf_run_server(struct iperf_test *test)
     send_streams_accepted = 0;
     rec_streams_accepted = 0;
 
-    /* >>>>>>> #1066 ADD */
     if (test->settings->connect_timeout > 0) {
         // Create timer to limit the wait time for first client connection
         TimerClientData cd;
@@ -579,7 +572,6 @@ iperf_run_server(struct iperf_test *test)
     }
 
     first_select = 1;
-    /* <<<<<<< ADD */
 
     while (test->state != IPERF_DONE) {
 
@@ -603,13 +595,11 @@ iperf_run_server(struct iperf_test *test)
             return -1;
         }
 
-        /* >>>>>>>> #1066 ADD */
         // If waiting for first client connection timed out - exit */
         if (result == 0 && test->settings->connect_timeout > 0 && first_select == 1)
             iperf_errexit(test, "Server timed out after waiting %d ms for client connection", test->settings->connect_timeout);
 
         first_select = 0;
-        /* <<<<<<<< #1066 ADD */
 
 	if (result > 0) {
             if (FD_ISSET(test->listener, &read_set)) {
