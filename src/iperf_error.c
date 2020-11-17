@@ -341,6 +341,10 @@ iperf_strerror(int int_errno)
             snprintf(errstr, len, "unable to set CPU affinity");
             perr = 1;
             break;
+        case IEMAXSERVERS:
+            snprintf(errstr, len, "maximum number of servers is above allowed number");
+            perr = 1;
+            break;
 	case IEDAEMON:
 	    snprintf(errstr, len, "unable to become a daemon");
 	    perr = 1;

@@ -79,6 +79,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_BIDIRECTIONAL 20
 #define OPT_SERVER_BITRATE_LIMIT 21
 #define OPT_TIMESTAMPS 22
+#define OPT_MAX_SERVERS 23
 
 /* states */
 #define TEST_START 1
@@ -97,6 +98,10 @@ typedef uint64_t iperf_size_t;
 #define DISPLAY_RESULTS 14
 #define IPERF_START 15
 #define IPERF_DONE 16
+/* >>>>> #1066 ADD */
+#define CONTROL_PORT_MIN 101
+#define CONTROL_PORT_MAX 116
+/* <<<<<< #1066 ADD */
 #define ACCESS_DENIED (-1)
 #define SERVER_ERROR (-2)
 
@@ -361,6 +366,7 @@ enum {
     IEBADPORT = 26,	    // Bad port number
     IETOTALRATE = 27,       // Total required bandwidth is larger than server's limit
     IETOTALINTERVAL = 28,   // Invalid time interval for calculating average data rate
+    IEMAXSERVERS = 29,      // Maximum number of servers servers is too high
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)

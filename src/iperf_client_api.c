@@ -244,6 +244,12 @@ iperf_handle_message_client(struct iperf_test *test)
         }
     }
 
+    if (test->debug) {
+        iperf_printf(
+            test, "Client received from server new test state=%d, server_port=%d\n",
+            test->state, test->server_port);
+    }
+
     switch (test->state) {
         case PARAM_EXCHANGE:
             if (iperf_exchange_parameters(test) < 0)
@@ -315,8 +321,52 @@ iperf_handle_message_client(struct iperf_test *test)
             errno = ntohl(err);
             return -1;
         default:
+            /* >>>>>>> #1066 REPLACE ****************************
             i_errno = IEMESSAGE;
             return -1;
+            *************** #1066 REPLACE *************************/
+            if (test->state < CONTROL_PORT_MIN || test->state > CONTROL_PORT_MAX) { // Error
+                i_errno = IEMESSAGE;
+                return -1;
+            }
+
+            if (test->ctrl_sck) close(test->ctrl_sck);  /* Close control socket before restarting client*/
+
+            /* Client is redirected to new server - restart client with the new port*/
+            #define MAX_ARGS 100
+            char *argv[MAX_ARGS];
+            int argc = test->argc;
+
+            #define port_str_size 10
+            char port_str[port_str_size];
+            int port;
+            int i;
+
+            // Determine new port number
+            port = test->server_port + test->state - CONTROL_PORT_MIN;
+            if (port < 1 || port > 999999)   // Port number not appropriate for port_str
+                return -1;
+
+            // Copy original parameters
+            if (argc + 3 > MAX_ARGS)   // Too many argumens
+                return -1;
+            for (i = 0; i < argc; argv[i] = test->argv[i], i++);
+
+            // Add new port number
+            argv[argc++] = "-p";
+            snprintf(port_str, port_str_size, "%d", port);
+            argv[argc++] = port_str;
+
+            argv[argc] = NULL;  // Terminating list of arguments
+
+            sleep(2);   // Allow time for new server to initalize;
+
+            // Executing the new server
+            iperf_printf(test, "Restarting client with new server control port=%d\n", port);
+            execv(argv[0], argv);
+            iperf_printf(test, "FAILED restarting client with new server control port=%d\n", port);
+            return -1;          // If `exec returned` it means that it failed
+            /* <<<<<<< #1066 REPLACE ****************************/
     }
 
     return 0;
