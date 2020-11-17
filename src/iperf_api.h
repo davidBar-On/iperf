@@ -368,11 +368,8 @@ enum {
     IEBADPORT = 26,	    // Bad port number
     IETOTALRATE = 27,       // Total required bandwidth is larger than server's limit
     IETOTALINTERVAL = 28,   // Invalid time interval for calculating average data rate
-<<<<<<< HEAD
     IEMAXSERVERS = 29,      // Maximum number of servers servers is too high
-=======
-    IESKEWTHRESHOLD = 29,   // Invalid value specified as skew threshold
->>>>>>> master
+    IESKEWTHRESHOLD = 30,   // Invalid value specified as skew threshold
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
