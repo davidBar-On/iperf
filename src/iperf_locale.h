@@ -94,6 +94,7 @@ extern const char report_datagrams[] ;
 extern const char report_sum_datagrams[] ;
 extern const char server_reporting[] ;
 extern const char reportCSV_peer[] ;
+extern const char report_client_restarts_summary[] ;    // >>>>> [DBO] <<<<<<
 
 extern const char report_cpu[] ;
 extern const char report_local[] ;

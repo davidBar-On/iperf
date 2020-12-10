@@ -126,6 +126,8 @@ sigend_handler(int sig)
 static int
 run(struct iperf_test *test)
 {
+    int rc;
+    
     /* Termination signals. */
     iperf_catch_sigend(sigend_handler);
     if (setjmp(sigend_jmp_buf))
@@ -137,7 +139,6 @@ run(struct iperf_test *test)
     switch (test->role) {
         case 's':
 	    if (test->daemon) {
-		int rc;
 		rc = daemon(0, 0);
 		if (rc < 0) {
 		    i_errno = IEDAEMON;
@@ -149,7 +150,6 @@ run(struct iperf_test *test)
 		iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
 	    }
             for (;;) {
-		int rc;
 		rc = iperf_run_server(test);
 		if (rc < 0) {
 		    iperf_err(test, "error - %s", iperf_strerror(i_errno));
@@ -169,9 +169,52 @@ run(struct iperf_test *test)
 	    iperf_delete_pidfile(test);
             break;
 	case 'c':
+            /****** >>>>> [DBO] REPLACE *********
 	    if (iperf_run_client(test) < 0)
 		iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
             break;
+            ****** [DBO] REPLACE *********/
+            // Run client until time is expired or client completes successfully.
+            // (Only accumulated time compared to `--time` is considered, not data that was already sent, etc.)
+            for (rc = -1; rc < 0 && test->duration >= 0; ) {
+                struct iperf_time time_start, time_end, time_diff;
+                double seconds;
+
+                if (1 /* ???? retry was set ???? */) {
+                    if (iperf_time_now(&time_start) < 0) {
+                        iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
+                        break;
+                    }
+                    if (test->verbose)
+                        iperf_printf(test, "(Re)Starting client for %d seconds\n", test->duration);
+                }
+
+                test->retry_count += 1;
+                rc = iperf_run_client(test);
+                if (test->debug) {
+		    printf("Client ended rc=%d\n", rc);
+	        }
+                if (rc >= 0) {
+                    break;
+                } else if (test->duration == 0 ||
+                           (test->retry_after == 0 || test->duration == 0 || test->duration <= test->retry_after + 1)) {
+		    iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
+                    break;
+                } else {
+                    iperf_err(test, "error - %s", iperf_strerror(i_errno));
+                    iperf_reset_client_test(test);
+                    sleep(test->retry_after);
+                    if (iperf_time_now(&time_end) < 0) {
+                        iperf_errexit(test, "error - %s", iperf_strerror(IEINITTEST));
+                        break;
+                    }
+                    iperf_time_diff(&time_end, &time_start, &time_diff);
+                    seconds = iperf_time_in_secs(&time_diff);
+                    test->duration -= (int)seconds;
+                }
+            }
+            break;           
+            /****** <<<<<<<< [DBO] REPLACE *********/
         default:
             usage();
             break;

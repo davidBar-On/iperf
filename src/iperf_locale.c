@@ -184,6 +184,7 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
                            "  --udp-counters-64bit      use 64-bit counters in UDP test packets\n"
                            "  --repeating-payload       use repeating pattern in payload, instead of\n"
                            "                            randomized payload (like in iperf2)\n"
+                           "  --retry-after #           time in seconds to wait before restarting client after failure\n"
 #if defined(HAVE_SSL)
                            "  --username                username for authentication\n"
                            "  --rsa-public-key-path     path to the RSA public key used to encrypt\n"
@@ -413,6 +414,9 @@ const char reportCSV_peer[] =
 
 const char report_cpu[] =
 "CPU Utilization: %s/%s %.1f%% (%.1f%%u/%.1f%%s), %s/%s %.1f%% (%.1f%%u/%.1f%%s)\n";
+
+const char report_client_restarts_summary[] =
+"[%s] Numebr of Client Restarts: %d\n";
 
 const char report_local[] = "local";
 const char report_remote[] = "remote";

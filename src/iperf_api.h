@@ -80,6 +80,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_SERVER_BITRATE_LIMIT 21
 #define OPT_TIMESTAMPS 22
 #define OPT_SERVER_SKEW_THRESHOLD 23
+#define OPT_RETRY_AFTER 24
 
 /* states */
 #define TEST_START 1
@@ -287,6 +288,7 @@ int iperf_create_send_timers(struct iperf_test *);
 int iperf_parse_arguments(struct iperf_test *, int, char **);
 int iperf_open_logfile(struct iperf_test *);
 void iperf_reset_test(struct iperf_test *);
+void iperf_reset_client_test(struct iperf_test *); // >>>>> [DBO] ADD <<<<<<<
 void iperf_reset_stats(struct iperf_test * test);
 
 struct protocol *get_protocol(struct iperf_test *, int);
@@ -364,6 +366,7 @@ enum {
     IETOTALRATE = 27,       // Total required bandwidth is larger than server's limit
     IETOTALINTERVAL = 28,   // Invalid time interval for calculating average data rate
     IESKEWTHRESHOLD = 29,   // Invalid value specified as skew threshold
+    IERETRYAFTER = 30,      // Invalid value specified as retry-after option
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)

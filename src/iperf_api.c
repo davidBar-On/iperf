@@ -939,6 +939,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"fq-rate", required_argument, NULL, OPT_FQ_RATE},
 	{"pacing-timer", required_argument, NULL, OPT_PACING_TIMER},
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
+        {"retry-after", required_argument, NULL, OPT_RETRY_AFTER},
         {"debug", no_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1358,6 +1359,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		test->settings->connect_timeout = unit_atoi(optarg);
 		client_flag = 1;
 		break;
+            case OPT_RETRY_AFTER:   // >>>>> [DBO] ADD option block <<<<<<
+                test->retry_after = atoi(optarg);
+                if (test->retry_after > MAX_TIME) {
+                    i_errno = IERETRYAFTER;
+                    return -1;
+                }
+		client_flag = 1;
+                break;
 	    case 'h':
 		usage_long(stdout);
 		exit(0);
@@ -2522,6 +2531,8 @@ iperf_defaults(struct iperf_test *testp)
     testp->ctrl_sck = -1;
     testp->prot_listener = -1;
     testp->other_side_has_retransmits = 0;
+    testp->retry_after = 0;      // >>>> [DBO] <<<<<
+    testp->retry_count = 0;      // >>>> [DBO] <<<<<
 
     testp->stats_callback = iperf_stats_callback;
     testp->reporter_callback = iperf_reporter_callback;
@@ -2789,6 +2800,8 @@ iperf_reset_test(struct iperf_test *test)
     set_protocol(test, Ptcp);
     test->omit = OMIT;
     test->duration = DURATION;
+    test->retry_after = 0;      // >>>> [DBO] <<<<<
+    test->retry_count = 0;      // >>>> [DBO] <<<<<
     test->server_affinity = -1;
 #if defined(HAVE_CPUSET_SETAFFINITY)
     CPU_ZERO(&test->cpumask);
@@ -2867,6 +2880,137 @@ iperf_reset_test(struct iperf_test *test)
 	free(t->line);
 	free(t);
     }
+}
+
+
+
+/* >>>>>> [DBO] ADD next function <<<<<<<<<<<<<< */
+void
+iperf_reset_client_test(struct iperf_test *test)
+{
+    struct iperf_stream *sp;
+    int i;
+
+    /* Free streams */
+    while (!SLIST_EMPTY(&test->streams)) {
+        sp = SLIST_FIRST(&test->streams);
+        SLIST_REMOVE_HEAD(&test->streams, streams);
+        iperf_free_stream(sp);
+    }
+    if (test->omit_timer != NULL) {
+	tmr_cancel(test->omit_timer);
+	test->omit_timer = NULL;
+    }
+    if (test->timer != NULL) {
+	tmr_cancel(test->timer);
+	test->timer = NULL;
+    }
+    if (test->stats_timer != NULL) {
+	tmr_cancel(test->stats_timer);
+	test->stats_timer = NULL;
+    }
+    if (test->reporter_timer != NULL) {
+	tmr_cancel(test->reporter_timer);
+	test->reporter_timer = NULL;
+    }
+    test->done = 0;
+
+    SLIST_INIT(&test->streams);
+
+    if (test->remote_congestion_used)
+        free(test->remote_congestion_used);
+    test->remote_congestion_used = NULL;
+
+    //test->role = 's';
+    //test->mode = RECEIVER;
+    test->sender_has_retransmits = 0;
+    //set_protocol(test, Ptcp);
+    //test->omit = OMIT;
+    //test->duration = DURATION;
+    //test->server_affinity = -1;
+#if defined(HAVE_CPUSET_SETAFFINITY)
+    //CPU_ZERO(&test->cpumask);
+#endif /* HAVE_CPUSET_SETAFFINITY */
+    test->state = 0;
+    
+    test->ctrl_sck = -1;
+    test->prot_listener = -1;
+
+    test->bytes_sent = 0;
+    test->blocks_sent = 0;
+
+    test->bytes_received = 0;
+    test->blocks_received = 0;
+
+    test->other_side_has_retransmits = 0;
+
+    test->bitrate_limit_stats_count = 0;
+    test->bitrate_limit_last_interval_index = 0;
+    test->bitrate_limit_exceeded = 0;
+
+    for (i = 0; i < MAX_INTERVAL; i++)
+        test->bitrate_limit_intervals_traffic_bytes[i] = 0;
+
+    //test->reverse = 0;
+    //test->bidirectional = 0;
+    //test->no_delay = 0;
+
+    FD_ZERO(&test->read_set);
+    FD_ZERO(&test->write_set);
+    
+    //test->num_streams = 1;
+    //test->settings->socket_bufsize = 0;
+    //test->settings->blksize = DEFAULT_TCP_BLKSIZE;
+    //test->settings->rate = 0;
+    //test->settings->burst = 0;
+    //test->settings->mss = 0;
+    //test->settings->tos = 0;
+
+/***********************
+#if defined(HAVE_SSL)
+    if (test->settings->authtoken) {
+        free(test->settings->authtoken);
+        test->settings->authtoken = NULL;
+    }
+    if (test->settings->client_username) {
+        free(test->settings->client_username);
+        test->settings->client_username = NULL;
+    }
+    if (test->settings->client_password) {
+        free(test->settings->client_password);
+        test->settings->client_password = NULL;
+    }
+    if (test->settings->client_rsa_pubkey) {
+        EVP_PKEY_free(test->settings->client_rsa_pubkey);
+        test->settings->client_rsa_pubkey = NULL;
+    }
+#endif * HAVE_SSL *
+**************************************************/
+
+    memset(test->cookie, 0, COOKIE_SIZE);
+    //test->multisend = 10;	/* arbitrary */
+    //test->udp_counters_64bit = 0;
+    /******
+    if (test->title) {
+	free(test->title);
+	test->title = NULL;
+    }
+    if (test->extra_data) {
+	free(test->extra_data);
+	test->extra_data = NULL;
+    }
+    *********/
+
+    /* Free output line buffers, if any (on the server only) */
+    /*******************
+    struct iperf_textline *t;
+    while (!TAILQ_EMPTY(&test->server_output_list)) {
+	t = TAILQ_FIRST(&test->server_output_list);
+	TAILQ_REMOVE(&test->server_output_list, t, textlineentries);
+	free(t->line);
+	free(t);
+    }
+    **************************/
 }
 
 
@@ -3209,14 +3353,21 @@ iperf_print_results(struct iperf_test *test)
     /* print final summary for all intervals */
 
     if (test->json_output) {
+        /* >>>>>> [DBO] */
+        if (test->role == 'c')
+            cJSON_AddItemToObject(test->json_end, "client_retries",
+                                  iperf_json_printf("retries: %d", (int64_t) test->retry_count - 1));
+        /* <<<<<<<< [DBO */
         json_summary_streams = cJSON_CreateArray();
 	if (json_summary_streams == NULL)
 	    return;
 	cJSON_AddItemToObject(test->json_end, "streams", json_summary_streams);
     } else {
 	iperf_printf(test, "%s", report_bw_separator);
-	if (test->verbose)
+	if (test->verbose) {
 	    iperf_printf(test, "%s", report_summary);
+            iperf_printf(test, report_client_restarts_summary, report_local, test->retry_count -1); // >>>> [DBO] ADD with block <<<<
+        }
 	if (test->protocol->id == Ptcp || test->protocol->id == Psctp) {
 	    if (test->sender_has_retransmits || test->other_side_has_retransmits) {
 	        if (test->bidirectional)
