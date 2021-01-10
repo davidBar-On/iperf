@@ -180,24 +180,29 @@ run(struct iperf_test *test)
                 struct iperf_time time_start, time_end, time_diff;
                 double seconds;
 
-                if (1 /* ???? retry was set ???? */) {
-                    if (iperf_time_now(&time_start) < 0) {
-                        iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
-                        break;
-                    }
-                    if (test->verbose)
+                if (iperf_time_now(&time_start) < 0) {
+                    iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
+                    break;
+                }
+                if (test->verbose) {
+                    if (test->duration > 0)
                         iperf_printf(test, "(Re)Starting client for %d seconds\n", test->duration);
+                    else if (test->debug)
+                        iperf_printf(test, "Starting client\n");
                 }
 
+                /* ?????!!!!! add test->success_connect_count and all related text with retry_count ???? */
+                /* ???!!!! add retry_after parameter get and set routines ???? */
+                // Counting number of client (re)restart trials and starting the client
                 test->retry_count += 1;
                 rc = iperf_run_client(test);
                 if (test->debug) {
 		    printf("Client ended rc=%d\n", rc);
 	        }
+
                 if (rc >= 0) {
                     break;
-                } else if (test->duration == 0 ||
-                           (test->retry_after == 0 || test->duration == 0 || test->duration <= test->retry_after + 1)) {
+                } else if (test->retry_after == 0 || test->duration == 0 || test->duration <= test->retry_after + 1) {
 		    iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
                     break;
                 } else {

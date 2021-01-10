@@ -2554,6 +2554,7 @@ iperf_defaults(struct iperf_test *testp)
     testp->other_side_has_retransmits = 0;
     testp->retry_after = 0;      // >>>> [DBO] <<<<<
     testp->retry_count = 0;      // >>>> [DBO] <<<<<
+    testp->success_connect_count = 0;   // >>>> [DBO] <<<<
 
     testp->stats_callback = iperf_stats_callback;
     testp->reporter_callback = iperf_reporter_callback;
@@ -2825,6 +2826,7 @@ iperf_reset_test(struct iperf_test *test)
     test->duration = DURATION;
     test->retry_after = 0;      // >>>> [DBO] <<<<<
     test->retry_count = 0;      // >>>> [DBO] <<<<<
+    test->success_connect_count = 0;   // >>>> [DBO] <<<<
     test->server_affinity = -1;
 #if defined(HAVE_CPUSET_SETAFFINITY)
     CPU_ZERO(&test->cpumask);
@@ -3378,8 +3380,10 @@ iperf_print_results(struct iperf_test *test)
     if (test->json_output) {
         /* >>>>>> [DBO] */
         if (test->role == 'c')
-            cJSON_AddItemToObject(test->json_end, "client_retries",
-                                  iperf_json_printf("retries: %d", (int64_t) test->retry_count - 1));
+            cJSON_AddItemToObject(test->json_end, "client_succesful_connects",
+                                  iperf_json_printf("retries: %d", (int64_t) test->success_connect_count));
+            cJSON_AddItemToObject(test->json_end, "client_connect_tries",
+                                  iperf_json_printf("retries: %d", (int64_t) test->retry_count));
         /* <<<<<<<< [DBO */
         json_summary_streams = cJSON_CreateArray();
 	if (json_summary_streams == NULL)
@@ -3389,7 +3393,8 @@ iperf_print_results(struct iperf_test *test)
 	iperf_printf(test, "%s", report_bw_separator);
 	if (test->verbose) {
 	    iperf_printf(test, "%s", report_summary);
-            iperf_printf(test, report_client_restarts_summary, report_local, test->retry_count -1); // >>>> [DBO] ADD with block <<<<
+            iperf_printf(test, report_client_restarts_summary, report_local,
+                         test->success_connect_count, test->retry_count); // >>>> [DBO] ADD with block <<<<
         }
 	if (test->protocol->id == Ptcp || test->protocol->id == Psctp) {
 	    if (test->sender_has_retransmits || test->other_side_has_retransmits) {

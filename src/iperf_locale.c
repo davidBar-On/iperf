@@ -422,7 +422,7 @@ const char report_cpu[] =
 "CPU Utilization: %s/%s %.1f%% (%.1f%%u/%.1f%%s), %s/%s %.1f%% (%.1f%%u/%.1f%%s)\n";
 
 const char report_client_restarts_summary[] =
-"[%s] Numebr of Client Restarts: %d\n";
+"[%s] Number of Client successful connects: %d (out of connect %d tries)\n)";
 
 const char report_local[] = "local";
 const char report_remote[] = "remote";
