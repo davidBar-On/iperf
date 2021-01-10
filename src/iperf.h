@@ -265,7 +265,7 @@ struct iperf_test
     int       server_port;
     int       omit;                             /* duration of omit period (-O flag) */
     int       duration;                         /* total duration of test (-t flag) */
-    int       retry_after;                      /* --retry-after option - time to wait before restarting client */ //>>>> [DBO]<<<<
+    int       retry_after;                      /* --retry-after option - time to wait before restarting client */
     int       retry_count;                      /* number of times client started during the test */
     int       success_connect_count;            /* number of successful connects to the server during the test */
     char     *diskfile_name;			/* -F option */

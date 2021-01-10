@@ -487,10 +487,8 @@ iperf_run_client(struct iperf_test * test)
     if (iperf_connect(test) < 0)
         goto cleanup_and_fail;
 
-    /* >>>>>> [DBO] ADD */
     // Count number of successful connects to the server
     test->success_connect_count += 1;
-    /* <<<<< [DBO] ADD */
 
     /* Begin calculating CPU utilization */
     cpu_util(NULL);

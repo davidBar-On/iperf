@@ -169,11 +169,6 @@ run(struct iperf_test *test)
 	    iperf_delete_pidfile(test);
             break;
 	case 'c':
-            /****** >>>>> [DBO] REPLACE *********
-	    if (iperf_run_client(test) < 0)
-		iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
-            break;
-            ****** [DBO] REPLACE *********/
             // Run client until time is expired or client completes successfully.
             // (Only accumulated time compared to `--time` is considered, not data that was already sent, etc.)
             for (rc = -1; rc < 0 && test->duration >= 0; ) {
@@ -191,8 +186,6 @@ run(struct iperf_test *test)
                         iperf_printf(test, "Starting client\n");
                 }
 
-                /* ?????!!!!! add test->success_connect_count and all related text with retry_count ???? */
-                /* ???!!!! add retry_after parameter get and set routines ???? */
                 // Counting number of client (re)restart trials and starting the client
                 test->retry_count += 1;
                 rc = iperf_run_client(test);
@@ -218,8 +211,7 @@ run(struct iperf_test *test)
                     test->duration -= (int)seconds;
                 }
             }
-            break;           
-            /****** <<<<<<<< [DBO] REPLACE *********/
+            break;
         default:
             usage();
             break;

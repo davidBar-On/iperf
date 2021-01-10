@@ -289,7 +289,7 @@ int iperf_create_send_timers(struct iperf_test *);
 int iperf_parse_arguments(struct iperf_test *, int, char **);
 int iperf_open_logfile(struct iperf_test *);
 void iperf_reset_test(struct iperf_test *);
-void iperf_reset_client_test(struct iperf_test *); // >>>>> [DBO] ADD <<<<<<<
+void iperf_reset_client_test(struct iperf_test *);
 void iperf_reset_stats(struct iperf_test * test);
 
 struct protocol *get_protocol(struct iperf_test *, int);
