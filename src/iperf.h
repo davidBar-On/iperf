@@ -40,6 +40,7 @@
 # define _GNU_SOURCE
 #endif
 #include <netinet/tcp.h>
+#include <net/if.h> // for IFNAMSIZ
 
 #if defined(HAVE_CPUSET_SETAFFINITY)
 #include <sys/param.h>
@@ -160,6 +161,7 @@ struct iperf_settings
     EVP_PKEY  *client_rsa_pubkey;
 #endif // HAVE_SSL
     int	      connect_timeout;	    /* socket connection timeout, in ms */
+    int       idle_timeout;         /* server idle time timeout */
 };
 
 struct iperf_test;
@@ -184,6 +186,7 @@ struct iperf_stream
     int       green_light;
     int       buffer_fd;	/* data to send, file descriptor */
     char      *buffer;		/* data to send, mmapped */
+    int       pending_size;     /* pending data to send */
     int       diskfile_fd;	/* file to send, file descriptor */
     int	      diskfile_left;	/* remaining file data on disk */
 
@@ -258,6 +261,7 @@ struct iperf_test
     char     *server_hostname;                  /* -c option */
     char     *tmp_template;
     char     *bind_address;                     /* first -B option */
+    char     *bind_dev;                         /* bind to network device */
     TAILQ_HEAD(xbind_addrhead, xbind_entry) xbind_addrs; /* all -X opts */
     int       bind_port;                        /* --cport option */
     int       server_port;
@@ -345,6 +349,11 @@ struct iperf_test
     iperf_size_t bitrate_limit_last_interval_index;       /* Index of the last interval traffic insrted into the cyclic array */
     int          bitrate_limit_exceeded;                  /* Set by callback routine when average data rate exceeded the server's bitrate limit */
 
+    int server_last_run_rc;                      /* Save last server run rc for next test */
+    uint server_forced_idle_restarts_count;      /* count number of forced server restarts to make sure it is not stack */
+    uint server_forced_no_msg_restarts_count;    /* count number of forced server restarts to make sure it is not stack */
+    uint server_test_number;                     /* count number of tests performed by a server */
+
     char      cookie[COOKIE_SIZE];
 //    struct iperf_stream *streams;               /* pointer to list of struct stream */
     SLIST_HEAD(slisthead, iperf_stream) streams;
@@ -402,6 +411,7 @@ struct iperf_test
 #define MAX_BURST 1000
 #define MAX_MSS (9 * 1024)
 #define MAX_STREAMS 128
+#define NO_MSG_RCVD_TIMEOUT 120
 
 #define TIMESTAMP_FORMAT "%c "
 

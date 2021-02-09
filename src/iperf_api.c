@@ -1,5 +1,5 @@
 /*
- * iperf, Copyright (c) 2014-2020, The Regents of the University of
+ * iperf, Copyright (c) 2014-2021, The Regents of the University of
  * California, through Lawrence Berkeley National Laboratory (subject
  * to receipt of any required approvals from the U.S. Dept. of
  * Energy).  All rights reserved.
@@ -89,6 +89,7 @@
 #include "version.h"
 #if defined(HAVE_SSL)
 #include <openssl/bio.h>
+#include <openssl/err.h>
 #include "iperf_auth.h"
 #endif /* HAVE_SSL */
 
@@ -338,6 +339,12 @@ iperf_get_test_bind_address(struct iperf_test *ipt)
     return ipt->bind_address;
 }
 
+char *
+iperf_get_test_bind_dev(struct iperf_test *ipt)
+{
+    return ipt->bind_dev;
+}
+
 int
 iperf_get_test_udp_counters_64bit(struct iperf_test *ipt)
 {
@@ -379,6 +386,18 @@ int
 iperf_get_test_connect_timeout(struct iperf_test *ipt)
 {
     return ipt->settings->connect_timeout;
+}
+
+int
+iperf_get_test_idle_timeout(struct iperf_test *ipt)
+{
+    return ipt->settings->idle_timeout;
+}
+
+char*
+iperf_get_test_congestion_control(struct iperf_test* ipt)
+{
+    return ipt->congestion;
 }
 
 /************** Setter routines for some fields inside iperf_test *************/
@@ -655,6 +674,12 @@ iperf_set_test_bind_address(struct iperf_test *ipt, const char *bnd_address)
 }
 
 void
+iperf_set_test_bind_dev(struct iperf_test *ipt, char *bnd_dev)
+{
+    ipt->bind_dev = strdup(bnd_dev);
+}
+
+void
 iperf_set_test_udp_counters_64bit(struct iperf_test *ipt, int udp_counters_64bit)
 {
     ipt->udp_counters_64bit = udp_counters_64bit;
@@ -698,6 +723,18 @@ void
 iperf_set_test_connect_timeout(struct iperf_test* ipt, int ct)
 {
     ipt->settings->connect_timeout = ct;
+}
+
+void
+iperf_set_test_idle_timeout(struct iperf_test* ipt, int to)
+{
+    ipt->settings->idle_timeout = to;
+}
+
+void
+iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc)
+{
+    ipt->congestion = strdup(cc);
 }
 
 
@@ -887,6 +924,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         {"bidir", no_argument, NULL, OPT_BIDIRECTIONAL},
         {"window", required_argument, NULL, 'w'},
         {"bind", required_argument, NULL, 'B'},
+#if defined(HAVE_SO_BINDTODEVICE)
+        {"bind-dev", required_argument, NULL, OPT_BIND_DEV},
+#endif /* HAVE_SO_BINDTODEVICE */
         {"cport", required_argument, NULL, OPT_CLIENT_PORT},
         {"set-mss", required_argument, NULL, 'M'},
         {"no-delay", no_argument, NULL, 'N'},
@@ -931,8 +971,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"fq-rate", required_argument, NULL, OPT_FQ_RATE},
 	{"pacing-timer", required_argument, NULL, OPT_PACING_TIMER},
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
-        {"max-servers", required_argument, NULL, OPT_MAX_SERVERS},
+        {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"debug", no_argument, NULL, 'd'},
+        {"max-servers", required_argument, NULL, OPT_MAX_SERVERS},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -1140,6 +1181,11 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case 'B':
                 test->bind_address = strdup(optarg);
                 break;
+#if defined (HAVE_SO_BINDTODEVICE)
+            case OPT_BIND_DEV:
+                test->bind_dev = strdup(optarg);
+                break;
+#endif /* HAVE_SO_BINDTODEVICE */
             case OPT_CLIENT_PORT:
 		portno = atoi(optarg);
 		if (portno < 1 || portno > 65535) {
@@ -1248,6 +1294,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case 'F':
                 test->diskfile_name = optarg;
                 break;
+            case OPT_IDLE_TIMEOUT:
+                test->settings->idle_timeout = atoi(optarg);
+                if (test->settings->idle_timeout < 1 || test->settings->idle_timeout > MAX_TIME) {
+                    i_errno = IEIDLETIMEOUT;
+                    return -1;
+                }
+		server_flag = 1;
+	        break;
             case 'A':
 #if defined(HAVE_CPU_AFFINITY)
                 test->affinity = strtol(optarg, &endptr, 0);
@@ -1288,7 +1342,6 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		break;
 	    case 'I':
 		test->pidfile = strdup(optarg);
-		server_flag = 1;
 	        break;
 	    case OPT_LOGFILE:
 		test->logfile = strdup(optarg);
@@ -1393,6 +1446,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             return -1;
         } 
         if (test_load_pubkey_from_file(client_rsa_public_key) < 0){
+            iperf_err(test, "%s\n", ERR_error_string(ERR_get_error(), NULL));
             i_errno = IESETCLIENTAUTH;
             return -1;
         }
@@ -1414,6 +1468,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     } else if (test->role == 's' && server_rsa_private_key) {
         test->server_rsa_private_key = load_privkey_from_file(server_rsa_private_key);
         if (test->server_rsa_private_key == NULL){
+            iperf_err(test, "%s\n", ERR_error_string(ERR_get_error(), NULL));
             i_errno = IESETSERVERAUTH;
             return -1;
         }
@@ -1527,7 +1582,7 @@ iperf_check_throttle(struct iperf_stream *sp, struct iperf_time *nowP)
     double seconds;
     uint64_t bits_per_second;
 
-    if (sp->test->done || sp->test->settings->rate == 0 || sp->test->settings->burst != 0)
+    if (sp->test->done || sp->test->settings->rate == 0)
         return;
     iperf_time_diff(&sp->result->start_time_fixed, nowP, &temp_time);
     seconds = iperf_time_in_secs(&temp_time);
@@ -1575,7 +1630,8 @@ iperf_check_total_rate(struct iperf_test *test, iperf_size_t last_interval_bytes
     }
 
     if (bits_per_second  > test->settings->bitrate_limit) {
-	iperf_err(test, "Total throughput of %" PRIu64 " bps exceeded %" PRIu64 " bps limit", bits_per_second, test->settings->bitrate_limit);
+        if (iperf_get_verbose(test))
+            iperf_err(test, "Total throughput of %" PRIu64 " bps exceeded %" PRIu64 " bps limit", bits_per_second, test->settings->bitrate_limit);
 	test->bitrate_limit_exceeded = 1;
     }
 }
@@ -1586,6 +1642,7 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
     register int multisend, r, streams_active;
     register struct iperf_stream *sp;
     struct iperf_time now;
+    int no_throttle_check;
 
     /* Can we do multisend mode? */
     if (test->settings->burst != 0)
@@ -1595,13 +1652,20 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
     else
         multisend = 1;	/* nope */
 
+    /* Should bitrate throttle be checked for every send */
+    no_throttle_check = test->settings->rate != 0 && test->settings->burst == 0;
+
     for (; multisend > 0; --multisend) {
-	if (test->settings->rate != 0 && test->settings->burst == 0)
+	if (no_throttle_check)
 	    iperf_time_now(&now);
 	streams_active = 0;
 	SLIST_FOREACH(sp, &test->streams, streams) {
 	    if ((sp->green_light && sp->sender &&
 		 (write_setP == NULL || FD_ISSET(sp->socket, write_setP)))) {
+        if (multisend > 1 && test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
+            break;
+        if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
+            break;
 		if ((r = sp->snd(sp)) < 0) {
 		    if (r == NET_SOFTERROR)
 			break;
@@ -1610,18 +1674,16 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
 		}
 		streams_active = 1;
 		test->bytes_sent += r;
-		++test->blocks_sent;
-		iperf_check_throttle(sp, &now);
-		if (multisend > 1 && test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
-		    break;
-		if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
-		    break;
+		if (!sp->pending_size)
+		    ++test->blocks_sent;
+                if (no_throttle_check)
+		    iperf_check_throttle(sp, &now);
 	    }
 	}
 	if (!streams_active)
 	    break;
     }
-    if (test->settings->burst != 0) {
+    if (!no_throttle_check) {   /* Throttle check if was not checked for each send */
 	iperf_time_now(&now);
 	SLIST_FOREACH(sp, &test->streams, streams)
 	    if (sp->sender)
@@ -1734,12 +1796,16 @@ int test_is_authorized(struct iperf_test *test){
 	}
         int ret = check_authentication(username, password, ts, test->server_authorized_users);
         if (ret == 0){
-            iperf_printf(test, report_authentication_succeeded, username, ts);
+            if (test->debug) {
+              iperf_printf(test, report_authentication_succeeded, username, ts);
+            }
             free(username);
             free(password);
             return 0;
         } else {
-            iperf_printf(test, report_authentication_failed, username, ts);
+            if (test->debug) {
+                iperf_printf(test, report_authentication_failed, username, ts);
+            }
             free(username);
             free(password);
             return -1;
@@ -2611,6 +2677,8 @@ iperf_free_test(struct iperf_test *test)
 	free(test->tmp_template);
     if (test->bind_address)
 	free(test->bind_address);
+    if (test->bind_dev)
+	free(test->bind_dev);
     if (!TAILQ_EMPTY(&test->xbind_addrs)) {
         struct xbind_entry *xbe;
 
@@ -3904,6 +3972,7 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
         free(sp);
         return NULL;
     }
+    sp->pending_size = 0;
 
     /* Set socket */
     sp->socket = s;
@@ -4164,7 +4233,7 @@ iperf_create_pidfile(struct iperf_test *test)
 	    return -1;
 	}
 	snprintf(buf, sizeof(buf), "%d", getpid()); /* no trailing newline */
-	if (write(fd, buf, strlen(buf) + 1) < 0) {
+	if (write(fd, buf, strlen(buf)) < 0) {
 	    return -1;
 	}
 	if (close(fd) < 0) {

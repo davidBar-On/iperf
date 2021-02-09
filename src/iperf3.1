@@ -117,6 +117,9 @@ set server port to listen on/connect to to \fIn\fR (default 5201)
 pause \fIn\fR seconds between periodic throughput reports;
 default is 1, use 0 to disable
 .TP
+.BR -I ", " --pidfile " \fIfile\fR"
+write a file with the process ID, most useful when running as a daemon.
+.TP
 .BR -F ", " --file " \fIname\fR"
 Use a file as the source (on the sender) or sink (on the receiver) of
 data, rather than just generating random data or throwing it away.
@@ -139,6 +142,10 @@ CPUs).
 .TP
 .BR -B ", " --bind " \fIhost\fR"
 bind to the specific interface associated with address \fIhost\fR.
+.BR --bind-dev " \fIdev\R"
+bind to the specified network interface.
+This option uses SO_BINDTODEVICE, and may require root permissions.
+(Available on Linux and possibly other systems.)
 .TP
 .BR -V ", " --verbose " "
 give more detailed output 
@@ -181,9 +188,6 @@ run in server mode
 .TP
 .BR -D ", " --daemon " "
 run the server in background as a daemon
-.TP
-.BR -I ", " --pidfile " \fIfile\fR"
-write a file with the process ID, most useful when running as a daemon.
 .TP
 .BR -1 ", " --one-off
 handle one client connection, then exit.
@@ -405,7 +409,11 @@ path to the RSA public key used to encrypt authentication credentials
 The authentication feature of iperf3 requires an RSA public keypair.
 The public key is used to encrypt the authentication token containing the 
 user credentials, while the private key is used to decrypt the authentication token.
-An example of a set of UNIX/Linux commands to generate correct keypair follows:
+The private key must be in PEM format and additionally must not have a
+password set.
+The public key must be in PEM format and use SubjectPrefixKeyInfo encoding.
+An example of a set of UNIX/Linux commands using OpenSSL
+to generate a correctly-formed keypair follows:
 .sp 1 
 .in +.5i
 > openssl genrsa -des3 -out private.pem 2048

@@ -100,11 +100,15 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
                            "  -p, --port      #         server port to listen on/connect to\n"
                            "  -f, --format   [kmgtKMGT] format to report: Kbits, Mbits, Gbits, Tbits\n"
                            "  -i, --interval  #         seconds between periodic throughput reports\n"
+                           "  -I, --pidfile file        write PID file\n"
                            "  -F, --file name           xmit/recv the specified file\n"
 #if defined(HAVE_CPU_AFFINITY)
                            "  -A, --affinity n/n,m      set CPU affinity\n"
 #endif /* HAVE_CPU_AFFINITY */
                            "  -B, --bind      <host>    bind to the interface associated with the address <host>\n"
+#if defined(HAVE_SO_BINDTODEVICE)
+                           "  --bind-dev      <dev>     bind to the network interface with SO_BINDTODEVICE\n"
+#endif /* HAVE_SO_BINDTODEVICE */
                            "  -V, --verbose             more detailed output\n"
                            "  -J, --json                output in JSON format\n"
                            "  --logfile f               send output to a log file\n"
@@ -117,11 +121,12 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
                            "Server specific:\n"
                            "  -s, --server              run in server mode\n"
                            "  -D, --daemon              run the server as a daemon\n"
-                           "  -I, --pidfile file        write PID file\n"
                            "  -1, --one-off             handle one client connection then exit\n"
 			   "  --server-bitrate-limit #[KMG][/#]   server's total bit rate limit (default 0 = no limit)\n"
 			   "                            (optional slash and number of secs interval for averaging\n"
 			   "                            total data rate.  Default is 5 seconds)\n"
+                           "  --idle-timeout #         restart server if is idle for #[sec] to overcome\n"
+                           "                           stacked server for different reasone\n"
 #if defined(HAVE_SSL)
                            "  --rsa-private-key-path    path to the RSA private key used to decrypt\n"
 			   "                            authentication credentials\n"
@@ -236,6 +241,9 @@ const char client_port[] =
 const char bind_address[] =
 "Binding to local address %s\n";
 
+const char bind_dev[] =
+"Binding to local network device %s\n";
+
 const char bind_port[] =
 "Binding to local port %s\n";
 
@@ -284,7 +292,7 @@ const char report_connecting[] =
 "Connecting to host %s, port %d\n";
 
 const char report_authentication_succeeded[] =
-"Authentication successed for user '%s' ts %ld\n";
+"Authentication succeeded for user '%s' ts %ld\n";
 
 const char report_authentication_failed[] =
 "Authentication failed for user '%s' ts %ld\n";

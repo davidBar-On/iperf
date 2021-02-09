@@ -80,7 +80,9 @@ typedef uint64_t iperf_size_t;
 #define OPT_SERVER_BITRATE_LIMIT 21
 #define OPT_TIMESTAMPS 22
 #define OPT_SERVER_SKEW_THRESHOLD 23
-#define OPT_MAX_SERVERS 24
+#define OPT_BIND_DEV 24
+#define OPT_IDLE_TIMEOUT 25
+#define OPT_MAX_SERVERS 26
 
 /* states */
 #define TEST_START 1
@@ -143,6 +145,7 @@ char*	iperf_get_extra_data( struct iperf_test* ipt );
 char*	iperf_get_iperf_version(void);
 int	iperf_get_test_no_delay( struct iperf_test* ipt );
 int	iperf_get_test_connect_timeout( struct iperf_test* ipt );
+char*   iperf_get_test_congestion_control(struct iperf_test* ipt);
 
 /* Setter routines for some fields inside iperf_test. */
 void	iperf_set_verbose( struct iperf_test* ipt, int verbose );
@@ -180,6 +183,7 @@ void    iperf_set_test_tos( struct iperf_test* ipt, int tos );
 void	iperf_set_test_extra_data( struct iperf_test* ipt, const char *dat );
 void    iperf_set_test_bidirectional( struct iperf_test* ipt, int bidirectional);
 void    iperf_set_test_no_delay( struct iperf_test* ipt, int no_delay);
+void    iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc);
 
 #if defined(HAVE_SSL)
 void    iperf_set_test_client_username(struct iperf_test *ipt, const char *client_username);
@@ -368,8 +372,10 @@ enum {
     IEBADPORT = 26,	    // Bad port number
     IETOTALRATE = 27,       // Total required bandwidth is larger than server's limit
     IETOTALINTERVAL = 28,   // Invalid time interval for calculating average data rate
-    IEMAXSERVERS = 29,      // Maximum number of servers servers is too high
-    IESKEWTHRESHOLD = 30,   // Invalid value specified as skew threshold
+    IESKEWTHRESHOLD = 29,   // Invalid value specified as skew threshold
+    IEIDLETIMEOUT = 30,     // Invalid value specified as idle state timeout
+    IEMAXSERVERS = 31,      // Maximum number of servers servers is too high
+
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
@@ -414,6 +420,8 @@ enum {
     IESETPACING= 140,       // Unable to set socket pacing rate
     IESETBUF2= 141,	    // Socket buffer size incorrect (written value != read value)
     IEAUTHTEST = 142,       // Test authorization failed
+    IEBINDDEV = 143,        // Unable to bind-to-device (check perror, maybe permissions?)
+    IENOMSG = 144,          // No message was received for NO_MSG_RCVD_TIMEOUT time period
     /* Stream errors */
     IECREATESTREAM = 200,   // Unable to create a new stream (check herror/perror)
     IEINITSTREAM = 201,     // Unable to initialize stream (check herror/perror)
