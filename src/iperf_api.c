@@ -974,6 +974,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"debug", no_argument, NULL, 'd'},
         {"max-servers", required_argument, NULL, OPT_MAX_SERVERS},
+        {"server-test-number", required_argument, NULL, OPT_SERVER_TEST_NUMBER},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -1406,6 +1407,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		    }
 		server_flag = 1;
 		break;
+	    case OPT_SERVER_TEST_NUMBER:
+		test->server_test_number = unit_atoi(optarg);
+                if (test->server_test_number < 1) {
+			i_errno = IETESTNUMBER;
+			return -1;
+		    }
+		server_flag = 1;
+		break;
 	    case 'h':
 		usage_long(stdout);
 		exit(0);
@@ -1424,6 +1433,13 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         i_errno = IECLIENTONLY;
         return -1;
     }
+
+    /* Setting server test number manually is not allowed */
+    if (test->server_test_number > 0
+        && (test->settings->max_servers > 1 || !iperf_get_test_one_off(test))) {
+            i_errno = IETESTNUMBER;
+            return -1;
+        }
 
 #if defined(HAVE_SSL)
 

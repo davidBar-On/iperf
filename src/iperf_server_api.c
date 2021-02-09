@@ -163,8 +163,10 @@ iperf_start_new_server(struct iperf_test *test)
     char *argv[MAX_ARGS];
     int argc = test->argc;
 
-    #define port_str_size 10
-    char port_str[port_str_size];
+    #define port_str_max_size 10
+    #define test_num_str_max_size 20
+    char port_str[port_str_max_size + 1];
+    char test_num_str[test_num_str_max_size + 1];
     int port;
     int port_offset;
     int pid;
@@ -196,9 +198,10 @@ iperf_start_new_server(struct iperf_test *test)
     port = port_offset + test->server_port;      // Set the actual port number to be used
     if (port < 1 || port > 999999)   // Port number not appropriate for port_str
         return -1;
-    snprintf(port_str, port_str_size, "%d", port);
+    snprintf(port_str, port_str_max_size, "%d", port);
+    snprintf(test_num_str, test_num_str_max_size, "%d", test->server_test_number);
 
-    if (argc + 10 > MAX_ARGS)   // Too many arguments
+    if (argc + 12 > MAX_ARGS)   // Too many arguments
         return -1;
     for (i = 0; i < argc; argv[i] = test->argv[i], i++);
 
@@ -207,6 +210,8 @@ iperf_start_new_server(struct iperf_test *test)
     argv[argc++] = "--one-off";
     argv[argc++] = "--connect-timeout";
     argv[argc++] = "30000";
+    argv[argc++] = "--server-test-number";
+    argv[argc++] = test_num_str;
     argv[argc++] = "-p";
     argv[argc++] = port_str;
 
@@ -226,6 +231,7 @@ iperf_start_new_server(struct iperf_test *test)
     /* Parent */
     test->servers_list[port_offset] = pid;      // Save new server's info
     iperf_printf(test, "New server started - port=%d, pid=%d\n", port, pid);
+    test->server_test_number +=1;               // Count also child tests
     return port;
 }
 

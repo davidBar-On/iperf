@@ -83,6 +83,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_BIND_DEV 24
 #define OPT_IDLE_TIMEOUT 25
 #define OPT_MAX_SERVERS 26
+#define OPT_SERVER_TEST_NUMBER 27
 
 /* states */
 #define TEST_START 1
@@ -375,7 +376,8 @@ enum {
     IESKEWTHRESHOLD = 29,   // Invalid value specified as skew threshold
     IEIDLETIMEOUT = 30,     // Invalid value specified as idle state timeout
     IEMAXSERVERS = 31,      // Maximum number of servers servers is too high
-
+    IETESTNUMBER = 32,      // Starting server test number - 0 is first (Not for manual use)
+    
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
