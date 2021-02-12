@@ -522,10 +522,12 @@ iperf_run_server(struct iperf_test *test)
     struct iperf_time last_receive_time;
     struct iperf_time diff_time;
     struct timeval* timeout;
-    struct timeval default_timeout;
+    struct timeval used_timeout;
     int flag;
     int first_select;
     int i;
+    int64_t timeout_us;
+    int64_t rcv_timeout_us;
 
     static int *servers_list = NULL;   // Allocate servers list array only once
     int64_t t_usecs;
@@ -588,7 +590,7 @@ iperf_run_server(struct iperf_test *test)
     }
 
     first_select = 1;
-
+    rcv_timeout_us = (test->settings->rcv_timeout.secs * SEC_TO_US) + test->settings->rcv_timeout.usecs;
     while (test->state != IPERF_DONE) {
 
         // Check if average transfer rate was exceeded (condition set in the callback routines)
@@ -605,18 +607,24 @@ iperf_run_server(struct iperf_test *test)
 	timeout = tmr_timeout(&now);
 
         // Ensure select() will timeout to allow handling error cases that require server restart
-        if (timeout == NULL) {
-            default_timeout.tv_sec = 0;
-            if (test->state == IPERF_START) {
-                if (test-> settings->idle_timeout > 0)
-                    default_timeout.tv_sec = test-> settings->idle_timeout;
-            } else {
-                default_timeout.tv_sec = NO_MSG_RCVD_TIMEOUT;
+        if (test->state == IPERF_START) {       // In idle mode server may need to restart
+            if (timeout == NULL && test->settings->idle_timeout > 0) {
+                used_timeout.tv_sec = test->settings->idle_timeout;
+                used_timeout.tv_usec = 0;
+                timeout = &used_timeout;
             }
-            if (default_timeout.tv_sec > 0) {
-                default_timeout.tv_usec = 0;
-                timeout = &default_timeout;
+        } else {        // In active mode server ensures data is received
+            timeout_us = -1;
+            if (timeout != NULL) {
+                used_timeout.tv_sec = timeout->tv_sec;
+                used_timeout.tv_usec = timeout->tv_usec;
+                timeout_us = (timeout->tv_sec * SEC_TO_US) + timeout->tv_usec;
             }
+            if (timeout_us < 0 || timeout_us > rcv_timeout_us) {
+                used_timeout.tv_sec = test->settings->rcv_timeout.secs;
+                used_timeout.tv_usec = test->settings->rcv_timeout.usecs;
+            }
+            timeout = &used_timeout;
         }
 
         result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
@@ -625,7 +633,7 @@ iperf_run_server(struct iperf_test *test)
             i_errno = IESELECT;
             return -1;
         } else if (result == 0) {
-            // If nothing was received during the last ... time
+            // If nothing was received during the specified time (per state)
             // then probably something got stack either at the client, server or network,
             // and Test should forced to end.
             iperf_time_now(&now);
@@ -637,17 +645,17 @@ iperf_run_server(struct iperf_test *test)
                         test->server_forced_idle_restarts_count += 1;
                         if (test->debug)
                             printf("Server restart (#%d) in idle state as no connection request was received for %d sec\n",
-                                test->server_forced_idle_restarts_count, test-> settings->idle_timeout);
+                                test->server_forced_idle_restarts_count, test->settings->idle_timeout);
                         cleanup_server(test);
                         return 2;
                     }
                 }
-                else if (t_usecs > NO_MSG_RCVD_TIMEOUT * SEC_TO_US) {
+                else if (t_usecs > rcv_timeout_us) {
                     test->server_forced_no_msg_restarts_count += 1;
                     i_errno = IENOMSG;
                     if (iperf_get_verbose(test))
-                        iperf_err(test, "Server restart (#%d) in active test as no message was received for %d sec",
-                                  test->server_forced_no_msg_restarts_count, NO_MSG_RCVD_TIMEOUT);
+                        iperf_err(test, "Server restart (#%d) in active test as message receive timed-out",
+                                  test->server_forced_no_msg_restarts_count);
                     cleanup_server(test);
                     return -1;
                 }

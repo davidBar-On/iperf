@@ -84,6 +84,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_IDLE_TIMEOUT 25
 #define OPT_MAX_SERVERS 26
 #define OPT_SERVER_TEST_NUMBER 27
+#define OPT_RCV_TIMEOUT 28
 
 /* states */
 #define TEST_START 1
@@ -377,7 +378,8 @@ enum {
     IEIDLETIMEOUT = 30,     // Invalid value specified as idle state timeout
     IEMAXSERVERS = 31,      // Maximum number of servers servers is too high
     IETESTNUMBER = 32,      // Starting server test number - 0 is first (Not for manual use)
-    
+    IERCVTIMEOUT = 33,      // Illegal message receive timeout
+
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
@@ -423,7 +425,7 @@ enum {
     IESETBUF2= 141,	    // Socket buffer size incorrect (written value != read value)
     IEAUTHTEST = 142,       // Test authorization failed
     IEBINDDEV = 143,        // Unable to bind-to-device (check perror, maybe permissions?)
-    IENOMSG = 144,          // No message was received for NO_MSG_RCVD_TIMEOUT time period
+    IENOMSG = 144,          // No message was received for <rcv timeout> time period
     /* Stream errors */
     IECREATESTREAM = 200,   // Unable to create a new stream (check herror/perror)
     IEINITSTREAM = 201,     // Unable to initialize stream (check herror/perror)

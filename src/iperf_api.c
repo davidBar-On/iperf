@@ -394,6 +394,12 @@ iperf_get_test_idle_timeout(struct iperf_test *ipt)
     return ipt->settings->idle_timeout;
 }
 
+struct iperf_time*
+iperf_get_test_rcv_timeout(struct iperf_test *ipt)
+{
+    return &ipt->settings->rcv_timeout;
+}
+
 char*
 iperf_get_test_congestion_control(struct iperf_test* ipt)
 {
@@ -732,6 +738,13 @@ iperf_set_test_idle_timeout(struct iperf_test* ipt, int to)
 }
 
 void
+iperf_set_test_rcv_timeout(struct iperf_test* ipt, struct iperf_time* to)
+{
+    ipt->settings->rcv_timeout.secs = to->secs;
+    ipt->settings->rcv_timeout.usecs = to->usecs;
+}
+
+void
 iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc)
 {
     ipt->congestion = strdup(cc);
@@ -972,6 +985,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"pacing-timer", required_argument, NULL, OPT_PACING_TIMER},
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
+        {"rcv-timeout", required_argument, NULL, OPT_RCV_TIMEOUT},
         {"debug", no_argument, NULL, 'd'},
         {"max-servers", required_argument, NULL, OPT_MAX_SERVERS},
         {"server-test-number", required_argument, NULL, OPT_SERVER_TEST_NUMBER},
@@ -989,6 +1003,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char* slash;
     struct xbind_entry *xbe;
     double farg;
+    double rcv_timeout_float = 0;
 
     blksize = 0;
     server_flag = client_flag = rate_flag = duration_flag = 0;
@@ -1301,6 +1316,17 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                     i_errno = IEIDLETIMEOUT;
                     return -1;
                 }
+		server_flag = 1;
+	        break;
+            case OPT_RCV_TIMEOUT:
+                rcv_timeout_float = atof(optarg);
+                if (rcv_timeout_float < MIN_RCV_TIMEOUT || rcv_timeout_float > MAX_TIME) {
+                    i_errno = IERCVTIMEOUT;
+                    return -1;
+                }
+                test->settings->rcv_timeout.secs = rcv_timeout_float;
+                test->settings->rcv_timeout.usecs = (rcv_timeout_float - test->settings->rcv_timeout.secs) * SEC_TO_US;
+                printf("** [DBO] rcv timeout: sec=%d, usec=%d;\n", test->settings->rcv_timeout.secs, test->settings->rcv_timeout.usecs);
 		server_flag = 1;
 	        break;
             case 'A':
@@ -2603,6 +2629,9 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->blocks = 0;
     testp->settings->connect_timeout = -1;
     testp->settings->max_servers = 1;
+    testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT;
+    testp->settings->rcv_timeout.usecs = 0;
+
     memset(testp->cookie, 0, COOKIE_SIZE);
 
     testp->multisend = 10;	/* arbitrary */

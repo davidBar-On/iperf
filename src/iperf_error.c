@@ -345,6 +345,10 @@ iperf_strerror(int int_errno)
             snprintf(errstr, len, "maximum number of servers is above allowed number");
             perr = 1;
             break;
+        case IERCVTIMEOUT:
+            snprintf(errstr, len, "server receive timeout value is incorrect or not in range");
+            perr = 1;
+            break;
 	case IEDAEMON:
 	    snprintf(errstr, len, "unable to become a daemon");
 	    perr = 1;
@@ -435,7 +439,7 @@ iperf_strerror(int int_errno)
 	    snprintf(errstr, len, "idle timeout parameter is not positive or larget then allowed limit");
             break;
 	case IENOMSG:
-	    snprintf(errstr, len, "no message was received for %d seconds", NO_MSG_RCVD_TIMEOUT);
+	    snprintf(errstr, len, "message receiving timedout");
             break;
 	default:
 	    snprintf(errstr, len, "int_errno=%d", int_errno);
