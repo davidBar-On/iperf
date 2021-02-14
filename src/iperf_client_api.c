@@ -344,11 +344,10 @@ iperf_handle_message_client(struct iperf_test *test)
                 return -1;
 
             // Copy original parameters
+            // NOTE: assiming argv[0] process path if full-path or in PATH 
             if (argc + 3 > MAX_ARGS)   // Too many argumens
                 return -1;
             for (i = 0; i < argc; argv[i] = test->argv[i], i++);
-
-            argv[0] = "/usr/local/bin/iperf3"; // ???? [DBO]
 
             // Add new port number
             argv[argc++] = "-p";

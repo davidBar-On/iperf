@@ -210,11 +210,11 @@ iperf_start_new_server(struct iperf_test *test)
     snprintf(port_str, port_str_max_size, "%d", port);
     snprintf(test_num_str, test_num_str_max_size, "%d", test->server_test_number);
 
+    // Copy original parameters
+    // NOTE: assiming argv[0] process path if full-path or in PATH 
     if (argc + 12 > MAX_ARGS)   // Too many arguments
         return -1;
     for (i = 0; i < argc; argv[i] = test->argv[i], i++);
-
-    argv[0] = "/usr/local/bin/iperf3"; // ???? [DBO]
 
     argv[argc++] = "--max-servers";
     argv[argc++] = "1";
