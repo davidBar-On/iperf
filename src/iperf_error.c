@@ -24,6 +24,8 @@
  * This code is distributed under a BSD style license, see the LICENSE
  * file for complete information.
  */
+#include <sys/types.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <netdb.h>
@@ -46,6 +48,8 @@ iperf_err(struct iperf_test *test, const char *format, ...)
     time_t now;
     struct tm *ltm = NULL;
     char *ct = NULL;
+    pid_t pid;
+    char pid_str[128];
 
     /* Timestamp if requested */
     if (test != NULL && test->timestamps) {
@@ -53,6 +57,14 @@ iperf_err(struct iperf_test *test, const char *format, ...)
 	ltm = localtime(&now);
 	strftime(iperf_timestrerr, sizeof(iperf_timestrerr), test->timestamp_format, ltm);
 	ct = iperf_timestrerr;
+    }
+
+    /* Get process id if multi-server */
+    if (test->settings->max_servers > 1) {
+            pid = getpid();
+            sprintf(pid_str, "[%d]", pid);
+    } else {
+            pid_str[0] = '\0';
     }
 
     va_start(argp, format);
@@ -64,13 +76,13 @@ iperf_err(struct iperf_test *test, const char *format, ...)
 	    if (ct) {
 		fprintf(test->outfile, "%s", ct);
 	    }
-	    fprintf(test->outfile, "iperf3: %s\n", str);
+	    fprintf(test->outfile, "iperf3%s: %s\n", pid_str, str);
 	}
 	else {
 	    if (ct) {
 		fprintf(stderr, "%s", ct);
 	    }
-	    fprintf(stderr, "iperf3: %s\n", str);
+	    fprintf(stderr, "iperf3%s: %s\n", pid_str, str);
 	}
     va_end(argp);
 }
@@ -440,6 +452,14 @@ iperf_strerror(int int_errno)
             break;
 	case IENOMSG:
 	    snprintf(errstr, len, "message receiving timedout");
+            break;
+        case IECLIENTEXEC:
+            snprintf(errstr, len, "unable to execute new client process");
+            perr = 1;
+            break;
+        case IESERVEREXEC:
+            snprintf(errstr, len, "unable to execute new server process");
+            perr = 1;
             break;
 	default:
 	    snprintf(errstr, len, "int_errno=%d", int_errno);

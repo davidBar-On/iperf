@@ -426,6 +426,8 @@ enum {
     IEAUTHTEST = 142,       // Test authorization failed
     IEBINDDEV = 143,        // Unable to bind-to-device (check perror, maybe permissions?)
     IENOMSG = 144,          // No message was received for <rcv timeout> time period
+    IECLIENTEXEC = 145,     // unable to execute new client process
+    IESERVEREXEC = 146,     // unable to execute new server process
     /* Stream errors */
     IECREATESTREAM = 200,   // Unable to create a new stream (check herror/perror)
     IEINITSTREAM = 201,     // Unable to initialize stream (check herror/perror)

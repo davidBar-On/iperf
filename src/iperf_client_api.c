@@ -348,6 +348,8 @@ iperf_handle_message_client(struct iperf_test *test)
                 return -1;
             for (i = 0; i < argc; argv[i] = test->argv[i], i++);
 
+            argv[0] = "/usr/local/bin/iperf3"; // ???? [DBO]
+
             // Add new port number
             argv[argc++] = "-p";
             snprintf(port_str, port_str_size, "%d", port);
@@ -360,7 +362,7 @@ iperf_handle_message_client(struct iperf_test *test)
             // Executing the new server
             iperf_printf(test, "Restarting client with new server control port=%d\n", port);
             execv(argv[0], argv);
-            iperf_printf(test, "FAILED restarting client with new server control port=%d\n", port);
+            iperf_err(test, "Restarting Client using port %d failed - %s", port, iperf_strerror(IECLIENTEXEC));
             return -1;          // If `exec returned` it means that it failed
     }
 

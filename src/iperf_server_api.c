@@ -70,6 +70,9 @@
 int
 iperf_server_listen(struct iperf_test *test)
 {
+    pid_t pid;
+    char pid_str[128];
+
     retry:
     if((test->listener = netannounce(test->settings->domain, Ptcp, test->bind_address, test->bind_dev, test->server_port)) < 0) {
 	if (errno == EAFNOSUPPORT && (test->settings->domain == AF_INET6 || test->settings->domain == AF_UNSPEC)) {
@@ -91,8 +94,14 @@ iperf_server_listen(struct iperf_test *test)
         if (test->server_last_run_rc != 2)
             test->server_test_number +=1;
         if (test->debug || test->server_last_run_rc != 2) {
+            if (test->settings->max_servers > 1) {
+                    pid = getpid();
+                    sprintf(pid_str, "[%d]", pid);
+            } else {
+                    pid_str[0] = '\0';
+            }
 	    iperf_printf(test, "-----------------------------------------------------------\n");
-	    iperf_printf(test, "Server listening on %d (test #%d)\n", test->server_port, test->server_test_number);
+	    iperf_printf(test, "Server%s listening on %d (test #%d)\n", pid_str, test->server_port, test->server_test_number);
 	    iperf_printf(test, "-----------------------------------------------------------\n");
 	    if (test->forceflush)
 	        iflush(test);
@@ -205,6 +214,8 @@ iperf_start_new_server(struct iperf_test *test)
         return -1;
     for (i = 0; i < argc; argv[i] = test->argv[i], i++);
 
+    argv[0] = "/usr/local/bin/iperf3"; // ???? [DBO]
+
     argv[argc++] = "--max-servers";
     argv[argc++] = "1";
     argv[argc++] = "--one-off";
@@ -225,6 +236,7 @@ iperf_start_new_server(struct iperf_test *test)
     else if (pid == 0) {    // Child - start new server
         cleanup_server(test);   /* Close all connections before restarting new server */
         execv(argv[0], argv);
+        iperf_err(test, "Starting new Server failed - %s", iperf_strerror(IESERVEREXEC));
         return -1;          // If `exec returned` it means that it failed
     }
 
