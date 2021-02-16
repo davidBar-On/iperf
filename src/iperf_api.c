@@ -1326,7 +1326,6 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 }
                 test->settings->rcv_timeout.secs = rcv_timeout_float;
                 test->settings->rcv_timeout.usecs = (rcv_timeout_float - test->settings->rcv_timeout.secs) * SEC_TO_US;
-                printf("** [DBO] rcv timeout: sec=%d, usec=%d;\n", test->settings->rcv_timeout.secs, test->settings->rcv_timeout.usecs);
 		server_flag = 1;
 	        break;
             case 'A':
@@ -1424,6 +1423,16 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		test->settings->connect_timeout = unit_atoi(optarg);
 		break;
 	    case OPT_MAX_SERVERS:
+            	slash = strchr(optarg, '/');
+		if (slash) {
+		    *slash = '\0';
+		    ++slash;
+		    test->settings->exec_server_connect_timeout = atoi(slash);
+		    if (test->settings->exec_server_connect_timeout <= 0) {
+			i_errno = IEMAXSERVERS;
+			return -1;
+		    }
+		}
 		test->settings->max_servers = unit_atoi(optarg);
                 if (test->settings->max_servers < 1
                         || test->settings->max_servers > (CONTROL_PORT_MAX - CONTROL_PORT_MIN + 1)
@@ -2629,6 +2638,7 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->blocks = 0;
     testp->settings->connect_timeout = -1;
     testp->settings->max_servers = 1;
+    testp->settings->exec_server_connect_timeout = DEFAULT_EXEC_SERVER_CONNECT_TIMEOUT;
     testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT;
     testp->settings->rcv_timeout.usecs = 0;
 

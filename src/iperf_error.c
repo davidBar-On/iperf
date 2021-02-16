@@ -354,7 +354,7 @@ iperf_strerror(int int_errno)
             perr = 1;
             break;
         case IEMAXSERVERS:
-            snprintf(errstr, len, "maximum number of servers is above allowed number");
+            snprintf(errstr, len, "maximum number of servers or exec timeout is illegal");
             perr = 1;
             break;
         case IERCVTIMEOUT:

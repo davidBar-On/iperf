@@ -56,6 +56,7 @@ typedef uint64_t iperf_size_t;
 #define DEFAULT_UDP_BLKSIZE 1460 /* default is dynamically set, else this */
 #define DEFAULT_TCP_BLKSIZE (128 * 1024)  /* default read/write block size */
 #define DEFAULT_SCTP_BLKSIZE (64 * 1024)
+#define DEFAULT_EXEC_SERVER_CONNECT_TIMEOUT 30000   /* [ms] */
 
 /* short option equivalents, used to support options that only have long form */
 #define OPT_SCTP 1
@@ -105,7 +106,7 @@ typedef uint64_t iperf_size_t;
 #define IPERF_DONE 16
 
 #define CONTROL_PORT_MIN 101
-#define CONTROL_PORT_MAX 116
+#define CONTROL_PORT_MAX 228
 
 #define ACCESS_DENIED (-1)
 #define SERVER_ERROR (-2)

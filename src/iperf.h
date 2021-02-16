@@ -153,7 +153,8 @@ struct iperf_settings
     iperf_size_t blocks;            /* number of blocks (packets) to send */
     char      unit_format;          /* -f */
     int       num_ostreams;         /* SCTP initmsg settings */
-    int       max_servers; /* Number of servers that can run in parallel */
+    int       max_servers;                      /* Number of servers that can run in parallel */
+    int       exec_server_connect_timeout;      /* Connection timeout server started by the main (ms) */
 #if defined(HAVE_SSL)
     char      *authtoken;           /* Authentication token */
     char      *client_username;
