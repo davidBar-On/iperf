@@ -414,8 +414,8 @@ struct iperf_test
 #define MAX_BURST 1000
 #define MAX_MSS (9 * 1024)
 #define MAX_STREAMS 128
-#define DEFAULT_NO_MSG_RCVD_TIMEOUT 120  // in [sec]
-#define MIN_RCV_TIMEOUT 0.1              // in [sec]
+#define DEFAULT_NO_MSG_RCVD_TIMEOUT 120000
+#define MIN_NO_MSG_RCVD_TIMEOUT 100
 
 #define TIMESTAMP_FORMAT "%c "
 

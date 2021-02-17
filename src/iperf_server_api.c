@@ -174,7 +174,7 @@ iperf_start_new_server(struct iperf_test *test)
 
     #define port_str_max_size 10
     #define test_num_str_max_size 20
-    #define connect_timeout_str_max_size 12
+    #define connect_timeout_str_max_size 15
     char port_str[port_str_max_size + 1];
     char test_num_str[test_num_str_max_size + 1];
     char connect_timeout_str[connect_timeout_str_max_size + 1];
@@ -211,7 +211,7 @@ iperf_start_new_server(struct iperf_test *test)
         return -1;
     snprintf(port_str, port_str_max_size, "%d", port);
     snprintf(test_num_str, test_num_str_max_size, "%d", test->server_test_number);
-    snprintf(test_num_str, test_num_str_max_size, "%d", test->settings->exec_server_connect_timeout);
+    snprintf(connect_timeout_str, connect_timeout_str_max_size, "%d", test->settings->exec_server_connect_timeout);
 
     // Copy original parameters
     // NOTE: assiming argv[0] process path if full-path or in PATH 
@@ -223,7 +223,7 @@ iperf_start_new_server(struct iperf_test *test)
     argv[argc++] = "1";
     argv[argc++] = "--one-off";
     argv[argc++] = "--connect-timeout";
-    argv[argc++] = test_num_str;
+    argv[argc++] = connect_timeout_str;
     argv[argc++] = "--server-test-number";
     argv[argc++] = test_num_str;
     argv[argc++] = "-p";

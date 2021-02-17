@@ -117,7 +117,7 @@ usage()
 void
 usage_long(FILE *f)
 {
-    fprintf(f, usage_longstr, UDP_RATE / (1024*1024), DURATION, DEFAULT_TCP_BLKSIZE / 1024, DEFAULT_UDP_BLKSIZE);
+    fprintf(f, usage_longstr, DEFAULT_NO_MSG_RCVD_TIMEOUT, (CONTROL_PORT_MAX - CONTROL_PORT_MIN +1), DEFAULT_EXEC_SERVER_CONNECT_TIMEOUT, UDP_RATE / (1024*1024), DURATION, DEFAULT_TCP_BLKSIZE / 1024, DEFAULT_UDP_BLKSIZE);
 }
 
 
@@ -1003,7 +1003,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char* slash;
     struct xbind_entry *xbe;
     double farg;
-    double rcv_timeout_float = 0;
+    int rcv_timeout_in = 0;
 
     blksize = 0;
     server_flag = client_flag = rate_flag = duration_flag = 0;
@@ -1319,13 +1319,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		server_flag = 1;
 	        break;
             case OPT_RCV_TIMEOUT:
-                rcv_timeout_float = atof(optarg);
-                if (rcv_timeout_float < MIN_RCV_TIMEOUT || rcv_timeout_float > MAX_TIME) {
+                rcv_timeout_in = atoi(optarg);
+                if (rcv_timeout_in < MIN_NO_MSG_RCVD_TIMEOUT || rcv_timeout_in > MAX_TIME * SEC_TO_mS) {
                     i_errno = IERCVTIMEOUT;
                     return -1;
                 }
-                test->settings->rcv_timeout.secs = rcv_timeout_float;
-                test->settings->rcv_timeout.usecs = (rcv_timeout_float - test->settings->rcv_timeout.secs) * SEC_TO_US;
+                test->settings->rcv_timeout.secs = rcv_timeout_in / SEC_TO_mS;
+                test->settings->rcv_timeout.usecs = (rcv_timeout_in % SEC_TO_mS) * mS_TO_US;
+                printf("** [DBO] PARAM sec=%d, usec=%d;\n", test->settings->rcv_timeout.secs, test->settings->rcv_timeout.usecs);
 		server_flag = 1;
 	        break;
             case 'A':
@@ -2639,9 +2640,9 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->connect_timeout = -1;
     testp->settings->max_servers = 1;
     testp->settings->exec_server_connect_timeout = DEFAULT_EXEC_SERVER_CONNECT_TIMEOUT;
-    testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT;
-    testp->settings->rcv_timeout.usecs = 0;
-
+    testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT / SEC_TO_mS;
+    testp->settings->rcv_timeout.usecs = (DEFAULT_NO_MSG_RCVD_TIMEOUT % SEC_TO_mS) * mS_TO_US;
+printf("** [DBO] DEFAULT sec=%d, usec=%d;\n", testp->settings->rcv_timeout.secs, testp->settings->rcv_timeout.usecs);
     memset(testp->cookie, 0, COOKIE_SIZE);
 
     testp->multisend = 10;	/* arbitrary */
