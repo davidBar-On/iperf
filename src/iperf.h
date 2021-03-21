@@ -132,7 +132,11 @@ struct iperf_stream_result
     void     *data;
 };
 
-#define COOKIE_SIZE 37		/* size of an ascii uuid */
+#define COOKIE_SIZE 37		          /* size of an ascii uuid */
+#define COOKIE_PREFIX "IPERF3"            /* Prifix of each created cookie */
+#define MAX_SOCKETS_WAITING_FOR_COOKIE 20 /* Max allowed sockets from first until valid cookie */
+#define MAX_TIME_WAITING_FOR_COOKIE 5     /* Number of secs waiting for a cookie after accepting a socket */
+
 struct iperf_settings
 {
     int       domain;               /* AF_INET or AF_INET6 */
@@ -352,7 +356,7 @@ struct iperf_test
     uint server_forced_no_msg_restarts_count;    /* count number of forced server restarts to make sure it is not stack */
     uint server_test_number;                     /* count number of tests performed by a server */
 
-    char      cookie[COOKIE_SIZE];
+    char      cookie[COOKIE_SIZE + 1];
 //    struct iperf_stream *streams;               /* pointer to list of struct stream */
     SLIST_HEAD(slisthead, iperf_stream) streams;
     struct iperf_settings *settings;

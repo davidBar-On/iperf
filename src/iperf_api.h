@@ -425,6 +425,8 @@ enum {
     IEBINDDEV = 143,        // Unable to bind-to-device (check perror, maybe permissions?)
     IENOMSG = 144,          // No message was received for NO_MSG_RCVD_TIMEOUT time period
     IESETDONTFRAGMENT = 145,    // Unable to set IP Do-Not-Fragment
+    IESETBLOCKING = 146,    // Unable to set socket blockng state
+    IETOOMANYSOCKETS = 147, // Too many sockets waiting for valid cookies since the first accepted - closing all
     /* Stream errors */
     IECREATESTREAM = 200,   // Unable to create a new stream (check herror/perror)
     IEINITSTREAM = 201,     // Unable to initialize stream (check herror/perror)

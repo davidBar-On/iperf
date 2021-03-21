@@ -131,6 +131,8 @@ iperf_tcp_accept(struct iperf_test * test)
         i_errno = IERECVCOOKIE;
         return -1;
     }
+    if (test->verbose)
+        iperf_printf(test, "Accepted new TCP connection with cookie=%.*s\n", COOKIE_SIZE, cookie);
 
     if (strcmp(test->cookie, cookie) != 0) {
         if (Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp) < 0) {

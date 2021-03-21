@@ -444,6 +444,12 @@ iperf_strerror(int int_errno)
     case IESETDONTFRAGMENT:
 	    snprintf(errstr, len, "unable to set IP Do-Not-Fragment flag");
             break;
+    case IESETBLOCKING:
+	    snprintf(errstr, len, "unable to set socket blockng state");
+            break;
+    case IETOOMANYSOCKETS:
+	    snprintf(errstr, len, "too many sockets waiting for valid cookies since the first accepted - closing all");
+            break;
 	default:
 	    snprintf(errstr, len, "int_errno=%d", int_errno);
 	    perr = 1;

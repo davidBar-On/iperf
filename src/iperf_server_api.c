@@ -114,49 +114,206 @@ iperf_accept(struct iperf_test *test)
     socklen_t len;
     struct sockaddr_storage addr;
 
+    fd_set read_set;
+    int result, i, r, j;
+    int sockets[MAX_SOCKETS_WAITING_FOR_COOKIE];
+    int sockets_count = 0;
+    int max_fd;
+    struct timeval timeout;
+    char cookies[MAX_SOCKETS_WAITING_FOR_COOKIE][COOKIE_SIZE];
+    int cookies_sizes[MAX_SOCKETS_WAITING_FOR_COOKIE];
+    struct iperf_time accept_time[MAX_SOCKETS_WAITING_FOR_COOKIE];
+    struct iperf_time now, diff_time;
+
     len = sizeof(addr);
-    if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) < 0) {
-        i_errno = IEACCEPT;
+
+    /* if test already active reject new connection */
+    if (test->ctrl_sck != -1) {
+        /* Not fail if send fails since socket may already be closed by the other end */
+        if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) > 0) {
+            /*
+            * Don't try to read from the socket.  It could block an ongoing test. 
+            * Just send ACCESS_DENIED.
+            */
+            if (test->verbose)
+                 iperf_printf(test, "Rejecting new connection in busy running a another test\n");
+            Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp);
+            close(s);
+        }
+        return 0;
+    }
+
+    /* Allow accepting more then one socket until valid cookie is received */
+    if (setnonblocking(test->listener, 1) < 0) {
+        i_errno = IESETBLOCKING;
         return -1;
     }
 
-    if (test->ctrl_sck == -1) {
-        /* Server free, accept new client */
-        test->ctrl_sck = s;
-        // set TCP_NODELAY for lower latency on control messages
-        int flag = 1;
-        if (setsockopt(test->ctrl_sck, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int))) {
-            i_errno = IESETNODELAY;
-            return -1;
-        }
+    /* Receive connections and get cookies until valid cookie is received.
+     * Allows to overcome port scanning, etc. that create a session.
+     */
+    memset(cookies, 0, sizeof(cookies));
+    memset(sockets, 0, sizeof(sockets));
+    memset(cookies_sizes, 0, sizeof(cookies_sizes));
+    while(test->ctrl_sck == -1) {
 
-        if (Nread(test->ctrl_sck, test->cookie, COOKIE_SIZE, Ptcp) < 0) {
-            i_errno = IERECVCOOKIE;
-            return -1;
-        }
-	FD_SET(test->ctrl_sck, &test->read_set);
-	if (test->ctrl_sck > test->max_fd) test->max_fd = test->ctrl_sck;
+        /* Set timeout for next select to wait for short time */
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
 
-	if (iperf_set_send_state(test, PARAM_EXCHANGE) != 0)
+        FD_ZERO(&read_set);
+        FD_SET(test->listener, &read_set);
+        for (max_fd = test->listener, j = 0; j < sockets_count; j++) {
+            if (sockets[j] != 0) {
+                FD_SET(sockets[j], &read_set);
+                if (max_fd < sockets[j])
+                    max_fd = sockets[j];
+            }
+        }
+        result = select(max_fd + 1, &read_set, NULL, NULL, &timeout);
+        if (result < 0 && errno != EINTR) {
+            i_errno = IESELECT;
+            for (j = 0; j < sockets_count; j++) {
+                if (sockets[j] != 0) {
+                    Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
+                    close(sockets[j]);
+                }
+            }
             return -1;
-        if (iperf_exchange_parameters(test) < 0)
-            return -1;
+
+        } else if (result == 0) {
+            /* If nothing was received for handling during the specified time
+             * then make sure that there is at least one non-timedoutactive socket.
+             */
+            iperf_time_now(&now);
+            for (i = 0, j = 0; j < sockets_count; j++) {
+                if (sockets[j] != 0) {
+                    iperf_time_diff(&now, &accept_time[j], &diff_time);
+                    if (iperf_time_in_secs(&diff_time) > MAX_TIME_WAITING_FOR_COOKIE 
+                            || recv(sockets[j], NULL, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
+                        if (test->verbose)
+                            iperf_printf(test, "TCP sockt %d is no longer active or timed out waiting for a cookie\n",
+                                         sockets[j]);
+                        close(sockets[j]);
+                        sockets[j] = 0;
+                    } else {
+                        i++;    // Socket is still active
+                    }
+                }
+            }
+            if (i == 0) {   // No active socket
+                if (test->verbose)
+                    iperf_printf(test, "Terminating trying to connect to a client as no socket is active\n");
+                return -1;
+            }
+
+        } else {    /* some action is required for listener */
+            /* check if new connextion received */
+            if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) < 0) {
+                if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    i_errno = IEACCEPT;
+                    for (j = 0; j < sockets_count; j++) {
+                        if (sockets[j] != 0) {
+                            Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
+                            close(sockets[j]);
+                        }
+                    }
+                    return -1;
+                }
+            }
+
+            if (s > 0) {
+                if (sockets_count < MAX_SOCKETS_WAITING_FOR_COOKIE) {
+                    /* Add socket and set to non-blocking to allow handling several sockets until getting valid cookie */
+                    if (setnonblocking(s, 1) < 0) {
+                        if (test->verbose)
+                            iperf_printf(test, "Failed to set non-blocking for new accepted TCP connection with socket=%d\n", s);
+                        close(s);
+                    } else {
+                        if (test->verbose)
+                            iperf_printf(test, "Accepted new TCP connection with socket=%d; total active waiting for cookie=%d\n", s, sockets_count);
+                        sockets[sockets_count] = s;
+                        iperf_time_now(&accept_time[sockets_count]);
+                        sockets_count++;
+                    }
+                } else {
+                    /* Too many sockets waiting for cookie - probably something is wrong so close all */
+                    i_errno = IETOOMANYSOCKETS;
+                    close(s);           
+                    for (j = 0; j < sockets_count; j++) {
+                        if (sockets[j] != 0) {
+                            Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
+                            close(sockets[j]);
+                        }
+                    }
+                    return -1;
+                }
+            }
+
+            /* Check if (some of) a cookie was rceived for any of the active sockets */
+            for (i = 0; i < sockets_count && test->ctrl_sck == -1; i++) {
+                if (sockets[i] > 0) {
+                    if ((r = Nread(sockets[i], &cookies[i][cookies_sizes[i]], COOKIE_SIZE - cookies_sizes[i], Ptcp)) < 0) {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                            if (test->verbose)
+                                iperf_printf(test, "Failed reading cookie - ignoring socket=%d, errno=%d\n", sockets[i], errno);
+                            close(sockets[i]);
+                            sockets[i] = 0;
+                        }
+                    } else {    // Received (some of) cookie
+                        cookies_sizes[i] += r;
+                        if (test->verbose && r > 0)
+                            iperf_printf(test, "(Partial) cookie read for socket=%d, len=%d\n", sockets[i], cookies_sizes[i]);
+                        /* if full valid cookie was received set the socket as the control socket
+                           * and reject all other sockets */
+                        if (cookies_sizes[i] == COOKIE_SIZE) {
+                            if (strncmp(COOKIE_PREFIX, cookies[i], strlen(COOKIE_PREFIX)) != 0) {
+                                /* not valid cookie - close the socket */
+                                if (test->verbose)
+                                    iperf_printf(test, "Cookie is not valid, closing socket=%d, cookie=%s\n", sockets[i], cookies[i]);
+                                close(sockets[i]);
+                                sockets[i] = 0;
+                            } else {    // Valid cookie - set its session as the control one
+                                for (j = 0; j < sockets_count; j++) {   // Close other active sockets
+                                    if (j != i && sockets[j] != 0) {
+                                        Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
+                                        close(sockets[j]);
+                                    }
+                                }
+                                if (setnonblocking(sockets[i], 0) < 0) {    // Reset socket to BLOCKING
+                                    if (test->verbose)
+                                    i_errno = IESETBLOCKING;
+                                    close(sockets[i]);
+                                    return -1;
+                                }
+                                if (test->verbose)
+                                    iperf_printf(test, "Test control channel is set to socket=%d\n", sockets[i]);
+                                test->ctrl_sck = sockets[i];
+                                strncpy(test->cookie, cookies[i], COOKIE_SIZE);
+                            }
+                        }
+                    }
+                }
+            }
+        } // end else select
+    } // end while
+
+    FD_SET(test->ctrl_sck, &test->read_set);
+    if (test->ctrl_sck > test->max_fd) test->max_fd = test->ctrl_sck;
+
+    if (iperf_set_send_state(test, PARAM_EXCHANGE) != 0)
+        return -1;
+    if (iperf_exchange_parameters(test) < 0)
+        return -1;
+    if (test->server_affinity != -1) 
 	if (test->server_affinity != -1) 
-	    if (iperf_setaffinity(test, test->server_affinity) != 0)
-		return -1;
-        if (test->on_connect)
-            test->on_connect(test);
-    } else {
-	/*
-	 * Don't try to read from the socket.  It could block an ongoing test. 
-	 * Just send ACCESS_DENIED.
-	 */
-        if (Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp) < 0) {
-            i_errno = IESENDMESSAGE;
+    if (test->server_affinity != -1) 
+	if (test->server_affinity != -1) 
+    if (test->server_affinity != -1) 
+        if (iperf_setaffinity(test, test->server_affinity) != 0)
             return -1;
-        }
-        close(s);
-    }
+    if (test->on_connect)
+        test->on_connect(test);
 
     return 0;
 }
@@ -375,7 +532,7 @@ cleanup_server(struct iperf_test *test)
     }
 
     /* Close open test sockets */
-    if (test->ctrl_sck) {
+    if (test->ctrl_sck > 0) {
 	close(test->ctrl_sck);
     }
     if (test->listener) {
@@ -541,7 +698,7 @@ iperf_run_server(struct iperf_test *test)
             if (FD_ISSET(test->listener, &read_set)) {
                 if (test->state != CREATE_STREAMS) {
                     if (iperf_accept(test) < 0) {
-			cleanup_server(test);
+                        cleanup_server(test);
                         return -1;
                     }
                     FD_CLR(test->listener, &read_set);
@@ -561,7 +718,7 @@ iperf_run_server(struct iperf_test *test)
             }
             if (FD_ISSET(test->ctrl_sck, &read_set)) {
                 if (iperf_handle_message_server(test) < 0) {
-		    cleanup_server(test);
+                    cleanup_server(test);
                     return -1;
 		}
                 FD_CLR(test->ctrl_sck, &read_set);                
@@ -571,9 +728,9 @@ iperf_run_server(struct iperf_test *test)
                 if (FD_ISSET(test->prot_listener, &read_set)) {
     
                     if ((s = test->protocol->accept(test)) < 0) {
-			cleanup_server(test);
+                        cleanup_server(test);
                         return -1;
-		    }
+                    }
 
                     if (!is_closed(s)) {
 
@@ -684,7 +841,7 @@ iperf_run_server(struct iperf_test *test)
                             close(test->listener);
 			    test->listener = 0;
                             if ((s = netannounce(test->settings->domain, Ptcp, test->bind_address, test->bind_dev, test->server_port)) < 0) {
-				cleanup_server(test);
+                                cleanup_server(test);
                                 i_errno = IELISTEN;
                                 return -1;
                             }
