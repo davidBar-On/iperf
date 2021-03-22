@@ -267,13 +267,16 @@ iperf_accept(struct iperf_test *test)
                         /* if full valid cookie was received set the socket as the control socket
                            * and reject all other sockets */
                         if (cookies_sizes[i] == COOKIE_SIZE) {
+                            /****** >>>>>> ????? [DBO] Temp removal of cookie prefix check since requires clients upgrade
                             if (strncmp(COOKIE_PREFIX, cookies[i], strlen(COOKIE_PREFIX)) != 0) {
-                                /* not valid cookie - close the socket */
+                                // Not a valid cookie - close the socket
                                 if (test->verbose)
                                     iperf_printf(test, "Cookie is not valid, closing socket=%d, cookie=%s\n", sockets[i], cookies[i]);
                                 close(sockets[i]);
                                 sockets[i] = 0;
-                            } else {    // Valid cookie - set its session as the control one
+                            } else {
+                            ******** <<<<<<<< ????? [DBO] temp removal *****************/
+                                // Valid cookie - set its session as the control one
                                 for (j = 0; j < sockets_count; j++) {   // Close other active sockets
                                     if (j != i && sockets[j] != 0) {
                                         Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
@@ -290,7 +293,7 @@ iperf_accept(struct iperf_test *test)
                                     iperf_printf(test, "Test control channel is set to socket=%d\n", sockets[i]);
                                 test->ctrl_sck = sockets[i];
                                 strncpy(test->cookie, cookies[i], COOKIE_SIZE);
-                            }
+                            //} ????? [DBO] Temp removal
                         }
                     }
                 }
