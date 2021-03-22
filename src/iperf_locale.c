@@ -130,6 +130,8 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 			   "                            total data rate.  Default is 5 seconds)\n"
                            "  --idle-timeout #          restart idle server after # seconds in case it\n"
                            "                            got stuck (default - no timeout)\n"
+                           "  --cookie-validate         validate cookie to ensure it is from iperf3 client\n"
+                           "                            (default - not set to support older version clients)\n"
 #if defined(HAVE_SSL)
                            "  --rsa-private-key-path    path to the RSA private key used to decrypt\n"
 			   "                            authentication credentials\n"

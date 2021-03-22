@@ -412,6 +412,12 @@ iperf_get_test_congestion_control(struct iperf_test* ipt)
     return ipt->congestion;
 }
 
+int
+iperf_get_test_cookie_validate(struct iperf_test* ipt)
+{
+    return ipt->cookie_validate;
+}
+
 /************** Setter routines for some fields inside iperf_test *************/
 
 void
@@ -768,6 +774,12 @@ iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc)
     ipt->congestion = strdup(cc);
 }
 
+void
+iperf_set_test_cookie_validate(struct iperf_test* ipt, int cv)
+{
+    ipt->cookie_validate = cv;
+}
+
 
 /********************** Get/set test protocol structure ***********************/
 
@@ -1008,6 +1020,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"rcv-timeout", required_argument, NULL, OPT_RCV_TIMEOUT},
+        {"cookie-validate", no_argument, NULL, OPT_COOKIE_VALIDATE},
         {"debug", no_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1456,6 +1469,10 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		test->settings->connect_timeout = unit_atoi(optarg);
 		client_flag = 1;
 		break;
+            case OPT_COOKIE_VALIDATE:
+                test->cookie_validate = 1;
+                server_flag = 1;
+                break;
 	    case 'h':
 		usage_long(stdout);
 		exit(0);
