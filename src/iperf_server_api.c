@@ -158,8 +158,8 @@ iperf_accept(struct iperf_test *test)
     while(test->ctrl_sck == -1) {
 
         /* Set timeout for next select to wait for short time */
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000;
 
         FD_ZERO(&read_set);
         FD_SET(test->listener, &read_set);
@@ -223,6 +223,11 @@ iperf_accept(struct iperf_test *test)
             }
 
             if (s > 0) {
+                /* Ensure new socket is not already in the list */
+                for (j = 0; j < sockets_count; j++) {
+                    if (sockets[j] == s) sockets[j] = 0;
+                }
+
                 if (sockets_count < MAX_SOCKETS_WAITING_FOR_COOKIE) {
                     /* Add socket and set to non-blocking to allow handling several sockets until getting valid cookie */
                     if (setnonblocking(s, 1) < 0) {
