@@ -125,6 +125,9 @@ iperf_accept(struct iperf_test *test)
     struct iperf_time accept_time[MAX_SOCKETS_WAITING_FOR_COOKIE];
     struct iperf_time now, diff_time;
 
+    if (test->verbose)
+        iperf_printf(test, "First new connection is waiting\n");
+
     len = sizeof(addr);
 
     /* if test already active reject new connection */
@@ -136,7 +139,7 @@ iperf_accept(struct iperf_test *test)
             * Just send ACCESS_DENIED.
             */
             if (test->verbose)
-                 iperf_printf(test, "Rejecting new connection in busy running a another test\n");
+                 iperf_printf(test, "Rejecting new connection in busy running another test\n");
             Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp);
             close(s);
         }
@@ -161,9 +164,8 @@ iperf_accept(struct iperf_test *test)
         timeout.tv_sec = 0;
         timeout.tv_usec = 100000;
 
-        FD_ZERO(&read_set);
-        FD_SET(test->listener, &read_set);
-        for (max_fd = test->listener, j = 0; j < sockets_count; j++) {
+        memcpy(&read_set, &test->read_set, sizeof(fd_set));     // Listener FD
+        for (max_fd = test->max_fd, j = 0; j < sockets_count; j++) {
             if (sockets[j] != 0) {
                 FD_SET(sockets[j], &read_set);
                 if (max_fd < sockets[j])
@@ -172,6 +174,7 @@ iperf_accept(struct iperf_test *test)
         }
         result = select(max_fd + 1, &read_set, NULL, NULL, &timeout);
         if (result < 0 && errno != EINTR) {
+            iperf_err(test, "Select while waiting for new connection or cookie failed on errno=%d\n", errno);
             i_errno = IESELECT;
             for (j = 0; j < sockets_count; j++) {
                 if (sockets[j] != 0) {
@@ -211,6 +214,7 @@ iperf_accept(struct iperf_test *test)
             /* check if new connextion received */
             if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) < 0) {
                 if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    iperf_err(test, "Accept failed when checking if new connection request was received errno=%d\n", errno);
                     i_errno = IEACCEPT;
                     for (j = 0; j < sockets_count; j++) {
                         if (sockets[j] != 0) {
@@ -223,26 +227,33 @@ iperf_accept(struct iperf_test *test)
             }
 
             if (s > 0) {
+                if (test->verbose)
+                    iperf_printf(test, "New connection was accepted with socket=%d\n", s);
                 /* Ensure new socket is not already in the list */
                 for (j = 0; j < sockets_count; j++) {
-                    if (sockets[j] == s) sockets[j] = 0;
+                    if (sockets[j] == s) {
+                        sockets[j] = 0;
+                        if (test->verbose)
+                            iperf_printf(test, "New socket %d was erronously listed as already waiting for cookie\n", s);
+                    }
                 }
 
                 if (sockets_count < MAX_SOCKETS_WAITING_FOR_COOKIE) {
                     /* Add socket and set to non-blocking to allow handling several sockets until getting valid cookie */
                     if (setnonblocking(s, 1) < 0) {
-                        if (test->verbose)
-                            iperf_printf(test, "Failed to set non-blocking for new accepted TCP connection with socket=%d\n", s);
+                        iperf_err(test, "Failed to set non-blocking for new accepted TCP connection with socket=%d\n", s);
                         close(s);
                     } else {
-                        if (test->verbose)
-                            iperf_printf(test, "Accepted new TCP connection with socket=%d; total active waiting for cookie=%d\n", s, sockets_count);
                         sockets[sockets_count] = s;
                         iperf_time_now(&accept_time[sockets_count]);
                         sockets_count++;
+                        if (test->verbose)
+                            iperf_printf(test, "Added Socket %d to list of sockets waiting for cookie; total sockets waiting for cookie=%d\n", s, sockets_count);
                     }
                 } else {
                     /* Too many sockets waiting for cookie - probably something is wrong so close all */
+                    if (test->verbose)
+                        iperf_printf(test, "Too many sockets are in the waiting for cookie list. Closing all\n");
                     i_errno = IETOOMANYSOCKETS;
                     close(s);           
                     for (j = 0; j < sockets_count; j++) {
@@ -260,12 +271,11 @@ iperf_accept(struct iperf_test *test)
                 if (sockets[i] > 0) {
                     if ((r = Nread(sockets[i], &cookies[i][cookies_sizes[i]], COOKIE_SIZE - cookies_sizes[i], Ptcp)) < 0) {
                         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                            if (test->verbose)
-                                iperf_printf(test, "Failed reading cookie - ignoring socket=%d, errno=%d\n", sockets[i], errno);
+                            iperf_err(test, "Failed reading cookie - ignoring socket=%d, errno=%d\n", sockets[i], errno);
                             close(sockets[i]);
                             sockets[i] = 0;
                         }
-                    } else {    // Received (some of) cookie
+                    } else {    // Received (some of) a cookie
                         cookies_sizes[i] += r;
                         if (test->verbose && r > 0)
                             iperf_printf(test, "(Partial) cookie read for socket=%d, len=%d\n", sockets[i], cookies_sizes[i]);
@@ -280,6 +290,8 @@ iperf_accept(struct iperf_test *test)
                                 sockets[i] = 0;
                             } else {
                                 // Valid cookie - set its session as the control one
+                                if (test->verbose)
+                                    iperf_printf(test, "Valid cookie was received for socket=%d\n", sockets[i]);
                                 for (j = 0; j < sockets_count; j++) {   // Close other active sockets
                                     if (j != i && sockets[j] != 0) {
                                         Nwrite(sockets[j], (char*) &rbuf, sizeof(rbuf), Ptcp);
@@ -287,7 +299,6 @@ iperf_accept(struct iperf_test *test)
                                     }
                                 }
                                 if (setnonblocking(sockets[i], 0) < 0) {    // Reset socket to BLOCKING
-                                    if (test->verbose)
                                     i_errno = IESETBLOCKING;
                                     close(sockets[i]);
                                     return -1;
@@ -304,6 +315,8 @@ iperf_accept(struct iperf_test *test)
         } // end else select
     } // end while
 
+    if (test->verbose)
+        iperf_printf(test, "Setting test control %d in test list of select FDs\n", test->ctrl_sck);
     FD_SET(test->ctrl_sck, &test->read_set);
     if (test->ctrl_sck > test->max_fd) test->max_fd = test->ctrl_sck;
 
