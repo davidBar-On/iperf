@@ -115,18 +115,36 @@ make_cookie(const char *cookie)
 {
     unsigned char *out = (unsigned char*)cookie;
     size_t pos;
-    size_t prefix_len = strlen(COOKIE_PREFIX);
+    // Note: for backward compatibility, `rndchars[]` value below must NOT BE CHNAGED
     static const unsigned char rndchars[] = "abcdefghijklmnopqrstuvwxyz234567";
 
-    strcpy((char*)out, COOKIE_PREFIX);
-
-    readentropy(out + prefix_len, COOKIE_SIZE - prefix_len);
-    for (pos = prefix_len; pos < (COOKIE_SIZE - 1); pos++) {
+    readentropy(out, COOKIE_SIZE);
+    for (pos = 0; pos < (COOKIE_SIZE - 1); pos++) {
         out[pos] = rndchars[out[pos] % (sizeof(rndchars) - 1)];
     }
     out[pos] = '\0';
 }
 
+/*
+ * Verify that that a cookie received is a valid iperf cookie.
+ */
+int
+validate_cookie(char * cookie)
+{
+    int ret = 0;
+    size_t pos;
+    char c;
+
+    for (pos = 0; pos < COOKIE_SIZE - 1; pos++) {
+        c = cookie[pos];
+        // Following test ensures cookie includs only valid chars per `make_cookie()`
+        if ((c < 'a' || c > 'z') && (c < '2' || c > '7')) {
+            ret = -1;
+            break;
+        }
+    }
+    return ret;
+}
 
 /* is_closed
  *

@@ -64,12 +64,16 @@ iperf_err(struct iperf_test *test, const char *format, ...)
 	    if (ct) {
 		fprintf(test->outfile, "%s", ct);
 	    }
+            if (test->title)
+	        fprintf(test->outfile, "%s:  ", test->title);
 	    fprintf(test->outfile, "iperf3: %s\n", str);
 	}
 	else {
 	    if (ct) {
 		fprintf(stderr, "%s", ct);
 	    }
+            if (test->title)
+	        fprintf(stderr, "%s:  ", test->title);
 	    fprintf(stderr, "iperf3: %s\n", str);
 	}
     va_end(argp);
@@ -103,12 +107,16 @@ iperf_errexit(struct iperf_test *test, const char *format, ...)
 	    if (ct) {
 		fprintf(test->outfile, "%s", ct);
 	    }
+            if (test->title)
+	        fprintf(test->outfile, "%s:  ", test->title);
 	    fprintf(test->outfile, "iperf3: %s\n", str);
 	}
 	else {
 	    if (ct) {
 		fprintf(stderr, "%s", ct);
 	    }
+            if (test->title)
+	        fprintf(stderr, "%s:  ", test->title);            
 	    fprintf(stderr, "iperf3: %s\n", str);
 	}
     va_end(argp);

@@ -130,8 +130,8 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 			   "                            total data rate.  Default is 5 seconds)\n"
                            "  --idle-timeout #          restart idle server after # seconds in case it\n"
                            "                            got stuck (default - no timeout)\n"
-                           "  --cookie-validate         validate cookie to ensure it is from iperf3 client\n"
-                           "                            (default - not set to support older version clients)\n"
+                           "  --cookie-wait             Max ms to wait for a cookie after connect received\n"
+                           "                            (default - 5 seconds)\n"
 #if defined(HAVE_SSL)
                            "  --rsa-private-key-path    path to the RSA private key used to decrypt\n"
 			   "                            authentication credentials\n"
@@ -187,7 +187,7 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 #endif /* HAVE_FLOWLABEL */
                            "  -Z, --zerocopy            use a 'zero copy' method of sending data\n"
                            "  -O, --omit N              omit the first n seconds\n"
-                           "  -T, --title str           prefix every output line with this string\n"
+                           "  -T, --title str           prefix every output line with this string (client ane server)\n"
                            "  --extra-data str          data string to include in client and server JSON\n"
                            "  --get-server-output       get results from server\n"
                            "  --udp-counters-64bit      use 64-bit counters in UDP test packets\n"
@@ -284,6 +284,8 @@ const char test_start_bytes[] =
 const char test_start_blocks[] =
 "Starting Test: protocol: %s, %d streams, %d byte blocks, omitting %d seconds, %d blocks to send, tos %d\n";
 
+const char test_start_title[] =
+"Test title: %s\n";
 
 /* -------------------------------------------------------------------
  * reports

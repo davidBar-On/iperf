@@ -57,8 +57,9 @@ typedef uint64_t iperf_size_t;
 #define DEFAULT_TCP_BLKSIZE (128 * 1024)  /* default read/write block size */
 #define DEFAULT_SCTP_BLKSIZE (64 * 1024)
 #define DEFAULT_PACING_TIMER 1000
-#define DEFAULT_NO_MSG_RCVD_TIMEOUT 120000
-#define MIN_NO_MSG_RCVD_TIMEOUT 100
+#define DEFAULT_NO_MSG_RCVD_TIMEOUT 120000  /* ms */
+#define MIN_NO_MSG_RCVD_TIMEOUT 100         /* ms */
+#define DEFAULT_MSG_RCVD_TIMEOUT_BEFORE_TEST_RUNNING 120  /* sec */
 
 /* short option equivalents, used to support options that only have long form */
 #define OPT_SCTP 1
@@ -87,7 +88,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_IDLE_TIMEOUT 25
 #define OPT_DONT_FRAGMENT 26
 #define OPT_RCV_TIMEOUT 27
-#define OPT_COOKIE_VALIDATE 28
+#define OPT_COOKIE_WAIT 28
 
 /* states */
 #define TEST_START 1
@@ -148,7 +149,7 @@ int	iperf_get_test_no_delay( struct iperf_test* ipt );
 int	iperf_get_test_connect_timeout( struct iperf_test* ipt );
 int	iperf_get_dont_fragment( struct iperf_test* ipt );
 char*   iperf_get_test_congestion_control(struct iperf_test* ipt);
-int	iperf_get_cookie_validate( struct iperf_test* ipt );
+int	iperf_get_icookie_wait( struct iperf_test* ipt );
 
 /* Setter routines for some fields inside iperf_test. */
 void	iperf_set_verbose( struct iperf_test* ipt, int verbose );
@@ -188,7 +189,7 @@ void    iperf_set_test_bidirectional( struct iperf_test* ipt, int bidirectional)
 void    iperf_set_test_no_delay( struct iperf_test* ipt, int no_delay);
 void    iperf_set_dont_fragment( struct iperf_test* ipt, int dont_fragment );
 void    iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc);
-void    iperf_set_cookie_validate( struct iperf_test* ipt, int cv );
+void    iperf_set_cookie_wait( struct iperf_test* ipt, int cw );
 
 #if defined(HAVE_SSL)
 void    iperf_set_test_client_username(struct iperf_test *ipt, const char *client_username);

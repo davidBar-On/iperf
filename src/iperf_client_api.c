@@ -62,12 +62,16 @@ iperf_create_streams(struct iperf_test *test, int sender)
 
     int orig_bind_port = test->bind_port;
     for (i = 0; i < test->num_streams; ++i) {
+        if (test->verbose)
+            iperf_printf(test, "Crteating stream %d out of %d streams\n", i + 1, test->num_streams);
 
         test->bind_port = orig_bind_port;
 	if (orig_bind_port)
 	    test->bind_port += i;
         if ((s = test->protocol->connect(test)) < 0)
             return -1;
+        if (test->verbose)
+            iperf_printf(test, "Socket %d connected for stream %d\n", s, i + 1);
 
 #if defined(HAVE_TCP_CONGESTION)
 	if (test->protocol->id == Ptcp) {
@@ -105,6 +109,9 @@ iperf_create_streams(struct iperf_test *test, int sender)
 	if (s > test->max_fd) test->max_fd = s;
 
         sp = iperf_new_stream(test, s, sender);
+        if (test->verbose)
+            iperf_printf(test, "`iperf_stream` %p successfully allocated for stream %d\n", sp, i + 1);
+
         if (!sp)
             return -1;
 
@@ -112,6 +119,8 @@ iperf_create_streams(struct iperf_test *test, int sender)
         if (test->on_new_stream)
             test->on_new_stream(sp);
     }
+    if (test->verbose)
+        iperf_printf(test, "All %d stream successfully created\n", test->num_streams);
 
     return 0;
 }
@@ -230,11 +239,17 @@ create_client_omit_timer(struct iperf_test * test)
 int
 iperf_handle_message_client(struct iperf_test *test)
 {
-    int rval;
+    int rval = 0;
     int32_t err;
 
     /*!!! Why is this read() and not Nread()? */
     if ((rval = read(test->ctrl_sck, (char*) &test->state, sizeof(signed char))) <= 0) {
+        if (test->verbose) {
+            if (is_closed(test->ctrl_sck))
+                iperf_printf(test, "Failed reading state message from server - control socket is closed\n");
+            else
+                iperf_printf(test, "Failed reading state message from server - read return=%d, errno=%d\n", rval, errno);
+        }
         if (rval == 0) {
             i_errno = IECTRLCLOSE;
             return -1;
@@ -243,6 +258,9 @@ iperf_handle_message_client(struct iperf_test *test)
             return -1;
         }
     }
+
+    if (test->verbose)
+        iperf_printf(test, "Test state=%d\n", test->state);
 
     switch (test->state) {
         case PARAM_EXCHANGE:
@@ -332,6 +350,8 @@ iperf_connect(struct iperf_test *test)
     FD_ZERO(&test->write_set);
 
     make_cookie(test->cookie);
+    if (test->verbose)
+        iperf_printf(test, "Created cookie=%.*s\n", COOKIE_SIZE, test->cookie);
 
     /* Create and connect the control channel */
     if (test->ctrl_sck < 0)

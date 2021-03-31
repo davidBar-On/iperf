@@ -120,21 +120,32 @@ iperf_tcp_accept(struct iperf_test * test)
     char    cookie[COOKIE_SIZE];
     socklen_t len;
     struct sockaddr_storage addr;
+    int r;
 
     len = sizeof(addr);
     if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) < 0) {
         i_errno = IESTREAMCONNECT;
         return -1;
     }
+    if (test->verbose)
+        iperf_printf(test, "Received new TCP stream connection request socket=%d\n", s);
 
-    if (Nread(s, cookie, COOKIE_SIZE, Ptcp) < 0) {
+    /* Set timeout for receivng cookie in case request is not from iperf3 client */
+    // Fixme: NEED TO SET TIMEOUT FOR Nread - set socket to non-blocking
+    //        and loop for short time (200ms?) on (errno == EAGAIN && errno == EWOULDBLOCK)
+
+    /* Read the cookie */
+    memset(cookie, 0, COOKIE_SIZE);
+    if ((r = Nread(s, cookie, COOKIE_SIZE, Ptcp)) != COOKIE_SIZE) {
         i_errno = IERECVCOOKIE;
         return -1;
     }
     if (test->verbose)
-        iperf_printf(test, "Accepted new TCP connection with cookie=%.*s\n", COOKIE_SIZE, cookie);
+        iperf_printf(test, "Received cokkie for new TCP stream connection request socket=%d with cookie=%.*s\n", s, COOKIE_SIZE, cookie);
 
     if (strcmp(test->cookie, cookie) != 0) {
+        if (test->verbose)
+            iperf_printf(test, "Rejecting new stream with sokect=%d as socket does not match\n", s);
         if (Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp) < 0) {
             iperf_err(test, "failed to send access denied from busy server to to new connecting client, errno=%d", errno);
         }

@@ -132,10 +132,9 @@ struct iperf_stream_result
     void     *data;
 };
 
-#define COOKIE_SIZE 37		          /* size of an ascii uuid */
-#define COOKIE_PREFIX "IPERF3"            /* Prifix of each created cookie */
-#define MAX_SOCKETS_WAITING_FOR_COOKIE 20 /* Max allowed sockets from first until valid cookie */
-#define MAX_TIME_WAITING_FOR_COOKIE 5     /* Number of secs waiting for a cookie after accepting a socket */
+#define COOKIE_SIZE 37		           /* size of an ascii uuid */
+#define MAX_SOCKETS_WAITING_FOR_COOKIE 20  /* Max allowed sockets from first until valid cookie */
+#define DEFAULT_MAX_WAIT_FOR_COOKIE 5000   /* Max ms waiting for a cookie after accepting a socket */
 
 struct iperf_settings
 {
@@ -314,7 +313,7 @@ struct iperf_test
     int       forceflush; /* --forceflush - flushing output at every interval */
     int	      multisend;
     int	      repeating_payload;                /* --repeating-payload */
-    int       cookie_validate;                  /* --cookie-validate */
+    int       cookie_wait;                      /* --cookie-wait */
     int       timestamps;			/* --timestamps */
     char     *timestamp_format;
 
@@ -357,7 +356,7 @@ struct iperf_test
     uint server_forced_no_msg_restarts_count;    /* count number of forced server restarts to make sure it is not stack */
     uint server_test_number;                     /* count number of tests performed by a server */
 
-    char      cookie[COOKIE_SIZE + 1];
+    char      cookie[COOKIE_SIZE];
 //    struct iperf_stream *streams;               /* pointer to list of struct stream */
     SLIST_HEAD(slisthead, iperf_stream) streams;
     struct iperf_settings *settings;

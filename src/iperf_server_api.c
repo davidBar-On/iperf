@@ -186,16 +186,16 @@ iperf_accept(struct iperf_test *test)
 
         } else if (result == 0) {
             /* If nothing was received for handling during the specified time
-             * then make sure that there is at least one non-timedoutactive socket.
+             * then make sure that there is at least one non-timedout active socket.
              */
             iperf_time_now(&now);
             for (i = 0, j = 0; j < sockets_count; j++) {
                 if (sockets[j] != 0) {
                     iperf_time_diff(&now, &accept_time[j], &diff_time);
-                    if (iperf_time_in_secs(&diff_time) > MAX_TIME_WAITING_FOR_COOKIE 
+                    if (iperf_time_in_usecs(&diff_time) > (test->cookie_wait * mS_TO_US)
                             || recv(sockets[j], NULL, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
                         if (test->verbose)
-                            iperf_printf(test, "TCP sockt %d is no longer active or timed out waiting for a cookie\n",
+                            iperf_printf(test, "TCP socket %d is no longer active or timed out waiting for a cookie\n",
                                          sockets[j]);
                         close(sockets[j]);
                         sockets[j] = 0;
@@ -282,7 +282,7 @@ iperf_accept(struct iperf_test *test)
                         /* if full valid cookie was received set the socket as the control socket
                            * and reject all other sockets */
                         if (cookies_sizes[i] == COOKIE_SIZE) {
-                            if (test->cookie_validate && strncmp(COOKIE_PREFIX, cookies[i], strlen(COOKIE_PREFIX)) != 0) {
+                            if (validate_cookie(cookies[i]) != 0) {
                                 // Cookie is not valid - close the socket
                                 if (test->verbose)
                                     iperf_printf(test, "Cookie is not valid, closing socket=%d, cookie=%s\n", sockets[i], cookies[i]);
@@ -347,6 +347,9 @@ iperf_handle_message_server(struct iperf_test *test)
 
     // XXX: Need to rethink how this behaves to fit API
     if ((rval = Nread(test->ctrl_sck, (char*) &test->state, sizeof(signed char), Ptcp)) <= 0) {
+        if (test->verbose)
+            iperf_printf(test, "Failed reading state message from client - read return=%d, errno=%d\n", rval, errno);
+
         if (rval == 0) {
 	    iperf_err(test, "the client has unexpectedly closed the connection");
             i_errno = IECTRLCLOSE;
@@ -656,12 +659,16 @@ iperf_run_server(struct iperf_test *test)
 	timeout = tmr_timeout(&now);
 
         // Ensure select() will timeout to allow handling error cases that require server restart
-        if (test->state == IPERF_START) {       // In idle mode server may need to restart
+        if (test->state == IPERF_START) {  // While waiting for connection - do not let server get stack forever
             if (timeout == NULL && test->settings->idle_timeout > 0) {
                 used_timeout.tv_sec = test->settings->idle_timeout;
                 used_timeout.tv_usec = 0;
                 timeout = &used_timeout;
             }
+        } else if (test->state != TEST_RUNNING) { // While not yet in active test - do not let server get stack forever
+            used_timeout.tv_sec = DEFAULT_MSG_RCVD_TIMEOUT_BEFORE_TEST_RUNNING;
+            used_timeout.tv_usec = 0;
+            timeout = &used_timeout;
         } else if (test->mode != SENDER) {     // In non-reverse active mode server ensures data is received
             timeout_us = -1;
             if (timeout != NULL) {
@@ -682,7 +689,7 @@ iperf_run_server(struct iperf_test *test)
             i_errno = IESELECT;
             return -1;
         } else if (result == 0) {
-            // If nothing was received during the specified time (per state)
+            // If nothing was received during the specified timeout (per state)
             // then probably something got stack either at the client, server or network,
             // and Test should be forced to end.
             iperf_time_now(&now);
@@ -693,8 +700,8 @@ iperf_run_server(struct iperf_test *test)
                     if (test->settings->idle_timeout > 0 && t_usecs >= test->settings->idle_timeout * SEC_TO_US) {
                         test->server_forced_idle_restarts_count += 1;
                         if (test->debug)
-                            printf("Server restart (#%d) in idle state as no connection request was received for %d sec\n",
-                                test->server_forced_idle_restarts_count, test->settings->idle_timeout);
+                            printf("Server restart (#%d) in idle state as no connection request was received for %lld sec\n",
+                                test->server_forced_idle_restarts_count, t_usecs/SEC_TO_US);
                         cleanup_server(test);
                         return 2;
                     }
@@ -703,8 +710,8 @@ iperf_run_server(struct iperf_test *test)
                     test->server_forced_no_msg_restarts_count += 1;
                     i_errno = IENOMSG;
                     if (iperf_get_verbose(test))
-                        iperf_err(test, "Server restart (#%d) during active test due to idle data for receiving data",
-                                  test->server_forced_no_msg_restarts_count);
+                        iperf_err(test, "Server restart (#%d) during active test due to idle time for %ld ms\n",
+                                  test->server_forced_no_msg_restarts_count, t_usecs/mS_TO_US);
                     cleanup_server(test);
                     return -1;
                 }

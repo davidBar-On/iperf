@@ -38,6 +38,8 @@ void fill_with_repeating_pattern(void *out, size_t outsize);
 
 void make_cookie(char *);
 
+int validate_cookie(char *);
+
 int is_closed(int);
 
 double timeval_to_double(struct timeval *tv);

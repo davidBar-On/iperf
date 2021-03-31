@@ -413,9 +413,9 @@ iperf_get_test_congestion_control(struct iperf_test* ipt)
 }
 
 int
-iperf_get_test_cookie_validate(struct iperf_test* ipt)
+iperf_get_test_cookie_wait(struct iperf_test* ipt)
 {
-    return ipt->cookie_validate;
+    return ipt->cookie_wait;
 }
 
 /************** Setter routines for some fields inside iperf_test *************/
@@ -775,9 +775,9 @@ iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc)
 }
 
 void
-iperf_set_test_cookie_validate(struct iperf_test* ipt, int cv)
+iperf_set_test_cookie_wait(struct iperf_test* ipt, int cw)
 {
-    ipt->cookie_validate = cv;
+    ipt->cookie_wait = cw;
 }
 
 
@@ -838,6 +838,8 @@ iperf_on_test_start(struct iperf_test *test)
 		iperf_printf(test, test_start_blocks, test->protocol->name, test->num_streams, test->settings->blksize, test->omit, test->settings->blocks, test->settings->tos);
 	    else
 		iperf_printf(test, test_start_time, test->protocol->name, test->num_streams, test->settings->blksize, test->omit, test->duration, test->settings->tos);
+            if (test->title)
+	        iperf_printf(test, test_start_title, test->title);
 	}
     }
 }
@@ -1020,7 +1022,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"rcv-timeout", required_argument, NULL, OPT_RCV_TIMEOUT},
-        {"cookie-validate", no_argument, NULL, OPT_COOKIE_VALIDATE},
+        {"cookie-wait", required_argument, NULL, OPT_COOKIE_WAIT},
         {"debug", no_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1469,8 +1471,8 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		test->settings->connect_timeout = unit_atoi(optarg);
 		client_flag = 1;
 		break;
-            case OPT_COOKIE_VALIDATE:
-                test->cookie_validate = 1;
+            case OPT_COOKIE_WAIT:
+                test->cookie_wait = unit_atoi(optarg);
                 server_flag = 1;
                 break;
 	    case 'h':
@@ -1645,8 +1647,8 @@ int iperf_open_logfile(struct iperf_test *test)
 int
 iperf_set_send_state(struct iperf_test *test, signed char state)
 {
+    test->state = state;
     if (test->ctrl_sck != -1) {
-        test->state = state;
         if (Nwrite(test->ctrl_sck, (char*) &state, sizeof(state), Ptcp) < 0) {
 	    i_errno = IESENDMESSAGE;
 	    return -1;
@@ -2681,6 +2683,8 @@ iperf_defaults(struct iperf_test *testp)
 
     testp->multisend = 10;	/* arbitrary */
 
+    testp->cookie_wait = DEFAULT_MAX_WAIT_FOR_COOKIE;
+
     /* Set up protocol list */
     SLIST_INIT(&testp->streams);
     SLIST_INIT(&testp->protocols);
@@ -2985,6 +2989,7 @@ iperf_reset_test(struct iperf_test *test)
 
     memset(test->cookie, 0, COOKIE_SIZE);
     test->multisend = 10;	/* arbitrary */
+    test->cookie_wait = DEFAULT_MAX_WAIT_FOR_COOKIE;
     test->udp_counters_64bit = 0;
     if (test->title) {
 	free(test->title);
@@ -4576,6 +4581,8 @@ iperf_printf(struct iperf_test *test, const char* format, ...)
 	if (ct) {
 	    i = sprintf(linebuffer, "%s", ct);
 	}
+        if (test->title)
+	    i += sprintf(linebuffer + i, "%s:  ", test->title);
 	va_start(argp, format);
 	r = vsnprintf(linebuffer + i, sizeof(linebuffer), format, argp);
 	va_end(argp);
