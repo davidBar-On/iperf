@@ -357,6 +357,10 @@ iperf_strerror(int int_errno)
             snprintf(errstr, len, "client receive timeout is valid only in receiving mode");
             perr = 1;
             break;
+        case IECNTLMSGWAIT:
+            snprintf(errstr, len, "control message wait timeout value is incorrect or not in range");
+            perr = 1;
+            break;
 	case IEDAEMON:
 	    snprintf(errstr, len, "unable to become a daemon");
 	    perr = 1;
@@ -448,6 +452,9 @@ iperf_strerror(int int_errno)
             break;
 	case IENOMSG:
 	    snprintf(errstr, len, "idle timeout for receiving data");
+            break;
+	case IENOCNTLMSG:
+	    snprintf(errstr, len, "idle timeout for receiving control message or cookie");
             break;
     case IESETDONTFRAGMENT:
 	    snprintf(errstr, len, "unable to set IP Do-Not-Fragment flag");

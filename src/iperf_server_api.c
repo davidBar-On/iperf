@@ -124,6 +124,7 @@ iperf_accept(struct iperf_test *test)
     int cookies_sizes[MAX_SOCKETS_WAITING_FOR_COOKIE];
     struct iperf_time accept_time[MAX_SOCKETS_WAITING_FOR_COOKIE];
     struct iperf_time now, diff_time;
+    int64_t cntl_msg_wait_us;
 
     if (test->verbose)
         iperf_printf(test, "First new connection is waiting\n");
@@ -158,6 +159,7 @@ iperf_accept(struct iperf_test *test)
     memset(cookies, 0, sizeof(cookies));
     memset(sockets, 0, sizeof(sockets));
     memset(cookies_sizes, 0, sizeof(cookies_sizes));
+    cntl_msg_wait_us = (test->settings->cntl_msg_wait.secs * SEC_TO_US) + test->settings->cntl_msg_wait.usecs;
     while(test->ctrl_sck == -1) {
 
         /* Set timeout for next select to wait for short time */
@@ -192,7 +194,7 @@ iperf_accept(struct iperf_test *test)
             for (i = 0, j = 0; j < sockets_count; j++) {
                 if (sockets[j] != 0) {
                     iperf_time_diff(&now, &accept_time[j], &diff_time);
-                    if (iperf_time_in_usecs(&diff_time) > (test->cookie_wait * mS_TO_US)
+                    if (iperf_time_in_usecs(&diff_time) > cntl_msg_wait_us
                             || recv(sockets[j], NULL, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
                         if (test->verbose)
                             iperf_printf(test, "TCP socket %d is no longer active or timed out waiting for a cookie\n",
@@ -607,7 +609,8 @@ iperf_run_server(struct iperf_test *test)
     int flag;
     int64_t t_usecs;
     int64_t timeout_us;
-    int64_t rcv_timeout_us;
+    int64_t rcv_timeout_us, cntl_msg_wait_us, current_data_rcv_timeout_us;
+    int first_data_message_to_receive;
 
     if (test->logfile)
         if (iperf_open_logfile(test) < 0)
@@ -642,6 +645,10 @@ iperf_run_server(struct iperf_test *test)
     send_streams_accepted = 0;
     rec_streams_accepted = 0;
     rcv_timeout_us = (test->settings->rcv_timeout.secs * SEC_TO_US) + test->settings->rcv_timeout.usecs;
+    cntl_msg_wait_us = (test->settings->cntl_msg_wait.secs * SEC_TO_US) + test->settings->cntl_msg_wait.usecs;
+
+    current_data_rcv_timeout_us = cntl_msg_wait_us;
+    first_data_message_to_receive = 2;
 
     while (test->state != IPERF_DONE) {
 
@@ -666,10 +673,10 @@ iperf_run_server(struct iperf_test *test)
                 timeout = &used_timeout;
             }
         } else if (test->state != TEST_RUNNING) { // While not yet in active test - do not let server get stack forever
-            used_timeout.tv_sec = DEFAULT_MSG_RCVD_TIMEOUT_BEFORE_TEST_RUNNING;
-            used_timeout.tv_usec = 0;
+            used_timeout.tv_sec = test->settings->cntl_msg_wait.secs;
+            used_timeout.tv_usec = test->settings->cntl_msg_wait.usecs;
             timeout = &used_timeout;
-        } else if (test->mode != SENDER) {     // In non-reverse active mode server ensures data is received
+        } else if (test->mode != SENDER) { // TEST_RUNNING - in non-reverse mode server ensures data is received
             timeout_us = -1;
             if (timeout != NULL) {
                 used_timeout.tv_sec = timeout->tv_sec;
@@ -677,8 +684,17 @@ iperf_run_server(struct iperf_test *test)
                 timeout_us = (timeout->tv_sec * SEC_TO_US) + timeout->tv_usec;
             }
             if (timeout_us < 0 || timeout_us > rcv_timeout_us) {
-                used_timeout.tv_sec = test->settings->rcv_timeout.secs;
-                used_timeout.tv_usec = test->settings->rcv_timeout.usecs;
+                if (first_data_message_to_receive > 0) { // Timeout for first data message should be as for control message
+                    if (timeout_us > cntl_msg_wait_us) {
+                        used_timeout.tv_sec = test->settings->cntl_msg_wait.secs;
+                        used_timeout.tv_usec = test->settings->cntl_msg_wait.usecs;
+                        current_data_rcv_timeout_us = cntl_msg_wait_us;
+                    }
+                } else { // Timeout for non-first data messages are as defined for data messages 
+                    used_timeout.tv_sec = test->settings->rcv_timeout.secs;
+                    used_timeout.tv_usec = test->settings->rcv_timeout.usecs;
+                    current_data_rcv_timeout_us = rcv_timeout_us;
+                }
             }
             timeout = &used_timeout;
         }
@@ -705,18 +721,26 @@ iperf_run_server(struct iperf_test *test)
                         cleanup_server(test);
                         return 2;
                     }
-                }
-                else if (test->mode != SENDER && t_usecs > rcv_timeout_us) {
+                } else if (test->state != TEST_RUNNING) {
+                    if (t_usecs >= cntl_msg_wait_us) {
+                        test->server_forced_no_msg_restarts_count += 1;
+                        i_errno = IENOCNTLMSG;
+                        if (iperf_get_verbose(test))
+                            printf("Server restart (#%d) while init a test since no message was received for %lld sec\n",
+                                test->server_forced_idle_restarts_count, t_usecs/SEC_TO_US);
+                        cleanup_server(test);
+                        return -1;
+                    }
+                } else if (test->mode != SENDER && t_usecs >= current_data_rcv_timeout_us) { // TEST_RUNNING
                     test->server_forced_no_msg_restarts_count += 1;
                     i_errno = IENOMSG;
                     if (iperf_get_verbose(test))
-                        iperf_err(test, "Server restart (#%d) during active test due to idle time for %ld ms\n",
+                        iperf_err(test, "Server restart (#%d) during active test since no message was received for %ld ms\n",
                                   test->server_forced_no_msg_restarts_count, t_usecs/mS_TO_US);
                     cleanup_server(test);
                     return -1;
                 }
-
-            }
+            }    
         }
 
 	if (result > 0) {
@@ -917,10 +941,14 @@ iperf_run_server(struct iperf_test *test)
 			cleanup_server(test);
                         return -1;
 		    }
+                    iperf_time_now(&last_receive_time); // Re-init last time something was received when test starts
                 }
             }
 
             if (test->state == TEST_RUNNING) {
+                if (first_data_message_to_receive > 0) {
+                    first_data_message_to_receive--;
+                }
                 if (test->mode == BIDIRECTIONAL) {
                     if (iperf_recv(test, &read_set) < 0) {
                         cleanup_server(test);

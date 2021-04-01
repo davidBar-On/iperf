@@ -132,9 +132,9 @@ struct iperf_stream_result
     void     *data;
 };
 
-#define COOKIE_SIZE 37		           /* size of an ascii uuid */
-#define MAX_SOCKETS_WAITING_FOR_COOKIE 20  /* Max allowed sockets from first until valid cookie */
-#define DEFAULT_MAX_WAIT_FOR_COOKIE 5000   /* Max ms waiting for a cookie after accepting a socket */
+#define COOKIE_SIZE 37		            /* size of an ascii uuid */
+#define MAX_SOCKETS_WAITING_FOR_COOKIE 20   /* Max allowed sockets from first until valid cookie */
+#define DEFAULT_MAX_WAIT_FOR_CNTL_MSG 10000 /* Max ms waiting for a cookie after accepting a socket */
 
 struct iperf_settings
 {
@@ -165,7 +165,8 @@ struct iperf_settings
 #endif // HAVE_SSL
     int	      connect_timeout;	    /* socket connection timeout, in ms */
     int       idle_timeout;         /* server idle time timeout */
-    struct iperf_time rcv_timeout;  /* Timeout for receiving messages in active mode, in us */
+    struct iperf_time rcv_timeout;  /* --rcv_timeout - Timeout for receiving messages in active mode */
+    struct iperf_time cntl_msg_wait; /* --cntl-msg-wait - Timeout for receiving control message or cookie */
 };
 
 struct iperf_test;
@@ -313,7 +314,6 @@ struct iperf_test
     int       forceflush; /* --forceflush - flushing output at every interval */
     int	      multisend;
     int	      repeating_payload;                /* --repeating-payload */
-    int       cookie_wait;                      /* --cookie-wait */
     int       timestamps;			/* --timestamps */
     char     *timestamp_format;
 

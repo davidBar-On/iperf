@@ -559,7 +559,6 @@ iperf_run_client(struct iperf_test * test)
                     i_errno = IENOMSG;
                     goto cleanup_and_fail;
                 }
-
             }
         }
         

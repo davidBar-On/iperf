@@ -117,7 +117,7 @@ usage()
 void
 usage_long(FILE *f)
 {
-    fprintf(f, usage_longstr, DEFAULT_NO_MSG_RCVD_TIMEOUT, UDP_RATE / (1024*1024), DEFAULT_PACING_TIMER, DURATION, DEFAULT_TCP_BLKSIZE / 1024, DEFAULT_UDP_BLKSIZE);
+    fprintf(f, usage_longstr, DEFAULT_NO_MSG_RCVD_TIMEOUT, UDP_RATE / (1024*1024), DEFAULT_MAX_WAIT_FOR_CNTL_MSG, DEFAULT_PACING_TIMER, DURATION, DEFAULT_TCP_BLKSIZE / 1024, DEFAULT_UDP_BLKSIZE);
 }
 
 
@@ -412,10 +412,10 @@ iperf_get_test_congestion_control(struct iperf_test* ipt)
     return ipt->congestion;
 }
 
-int
-iperf_get_test_cookie_wait(struct iperf_test* ipt)
+struct iperf_time*
+iperf_get_test_cntl_msg_wait(struct iperf_test *ipt)
 {
-    return ipt->cookie_wait;
+    return &ipt->settings->cntl_msg_wait;
 }
 
 /************** Setter routines for some fields inside iperf_test *************/
@@ -775,9 +775,10 @@ iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc)
 }
 
 void
-iperf_set_test_cookie_wait(struct iperf_test* ipt, int cw)
+iperf_set_test_cntl_msg_wait(struct iperf_test* ipt, struct iperf_time* cmw)
 {
-    ipt->cookie_wait = cw;
+    ipt->settings->cntl_msg_wait.secs = cmw->secs;
+    ipt->settings->cntl_msg_wait.usecs = cmw->usecs;
 }
 
 
@@ -1022,7 +1023,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	{"connect-timeout", required_argument, NULL, OPT_CONNECT_TIMEOUT},
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"rcv-timeout", required_argument, NULL, OPT_RCV_TIMEOUT},
-        {"cookie-wait", required_argument, NULL, OPT_COOKIE_WAIT},
+        {"cntl-msg-wait", required_argument, NULL, OPT_CNTL_MSG_WAIT},
         {"debug", no_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1039,6 +1040,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     struct xbind_entry *xbe;
     double farg;
     int rcv_timeout_in = 0;
+    int cntl_msg_wait_in = 0;
 
     blksize = 0;
     server_flag = client_flag = rate_flag = duration_flag = rcv_timeout_flag = 0;
@@ -1471,8 +1473,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		test->settings->connect_timeout = unit_atoi(optarg);
 		client_flag = 1;
 		break;
-            case OPT_COOKIE_WAIT:
-                test->cookie_wait = unit_atoi(optarg);
+            case OPT_CNTL_MSG_WAIT:
+                cntl_msg_wait_in = atoi(optarg);
+                if (cntl_msg_wait_in < MIN_NO_MSG_RCVD_TIMEOUT || cntl_msg_wait_in > MAX_TIME * SEC_TO_mS) {
+                    i_errno = IECNTLMSGWAIT;
+                    return -1;
+                }
+                test->settings->cntl_msg_wait.secs = cntl_msg_wait_in / SEC_TO_mS;
+                test->settings->cntl_msg_wait.usecs = (cntl_msg_wait_in % SEC_TO_mS) * mS_TO_US;
                 server_flag = 1;
                 break;
 	    case 'h':
@@ -2678,12 +2686,12 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->connect_timeout = -1;
     testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT / SEC_TO_mS;
     testp->settings->rcv_timeout.usecs = (DEFAULT_NO_MSG_RCVD_TIMEOUT % SEC_TO_mS) * mS_TO_US;
+    testp->settings->cntl_msg_wait.secs = DEFAULT_MAX_WAIT_FOR_CNTL_MSG / SEC_TO_mS;
+    testp->settings->cntl_msg_wait.usecs = (DEFAULT_MAX_WAIT_FOR_CNTL_MSG % SEC_TO_mS) * mS_TO_US;
 
     memset(testp->cookie, 0, COOKIE_SIZE);
 
     testp->multisend = 10;	/* arbitrary */
-
-    testp->cookie_wait = DEFAULT_MAX_WAIT_FOR_COOKIE;
 
     /* Set up protocol list */
     SLIST_INIT(&testp->streams);
@@ -2989,7 +2997,6 @@ iperf_reset_test(struct iperf_test *test)
 
     memset(test->cookie, 0, COOKIE_SIZE);
     test->multisend = 10;	/* arbitrary */
-    test->cookie_wait = DEFAULT_MAX_WAIT_FOR_COOKIE;
     test->udp_counters_64bit = 0;
     if (test->title) {
 	free(test->title);

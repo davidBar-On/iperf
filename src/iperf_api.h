@@ -59,7 +59,6 @@ typedef uint64_t iperf_size_t;
 #define DEFAULT_PACING_TIMER 1000
 #define DEFAULT_NO_MSG_RCVD_TIMEOUT 120000  /* ms */
 #define MIN_NO_MSG_RCVD_TIMEOUT 100         /* ms */
-#define DEFAULT_MSG_RCVD_TIMEOUT_BEFORE_TEST_RUNNING 120  /* sec */
 
 /* short option equivalents, used to support options that only have long form */
 #define OPT_SCTP 1
@@ -88,7 +87,7 @@ typedef uint64_t iperf_size_t;
 #define OPT_IDLE_TIMEOUT 25
 #define OPT_DONT_FRAGMENT 26
 #define OPT_RCV_TIMEOUT 27
-#define OPT_COOKIE_WAIT 28
+#define OPT_CNTL_MSG_WAIT 28
 
 /* states */
 #define TEST_START 1
@@ -149,7 +148,7 @@ int	iperf_get_test_no_delay( struct iperf_test* ipt );
 int	iperf_get_test_connect_timeout( struct iperf_test* ipt );
 int	iperf_get_dont_fragment( struct iperf_test* ipt );
 char*   iperf_get_test_congestion_control(struct iperf_test* ipt);
-int	iperf_get_icookie_wait( struct iperf_test* ipt );
+int	iperf_get_cntl_msg_wait( struct iperf_test* ipt );
 
 /* Setter routines for some fields inside iperf_test. */
 void	iperf_set_verbose( struct iperf_test* ipt, int verbose );
@@ -189,7 +188,7 @@ void    iperf_set_test_bidirectional( struct iperf_test* ipt, int bidirectional)
 void    iperf_set_test_no_delay( struct iperf_test* ipt, int no_delay);
 void    iperf_set_dont_fragment( struct iperf_test* ipt, int dont_fragment );
 void    iperf_set_test_congestion_control(struct iperf_test* ipt, char* cc);
-void    iperf_set_cookie_wait( struct iperf_test* ipt, int cw );
+void    iperf_set_cntl_msg_wait( struct iperf_test* ipt, int cw );
 
 #if defined(HAVE_SSL)
 void    iperf_set_test_client_username(struct iperf_test *ipt, const char *client_username);
@@ -382,6 +381,7 @@ enum {
     IEIDLETIMEOUT = 30,     // Invalid value specified as idle state timeout
     IERCVTIMEOUT = 31,      // Illegal message receive timeout
     IERVRSONLYRCVTIMEOUT = 32,  // Client receive timeout is valid only in reverse mode
+    IECNTLMSGWAIT = 33,     // Control message wait timeout value is incorrect or not in range
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
@@ -427,10 +427,11 @@ enum {
     IESETBUF2= 141,	    // Socket buffer size incorrect (written value != read value)
     IEAUTHTEST = 142,       // Test authorization failed
     IEBINDDEV = 143,        // Unable to bind-to-device (check perror, maybe permissions?)
-    IENOMSG = 144,          // No message was received for NO_MSG_RCVD_TIMEOUT time period
+    IENOMSG = 144,          // No message was received for the timeout period
     IESETDONTFRAGMENT = 145,    // Unable to set IP Do-Not-Fragment
     IESETBLOCKING = 146,    // Unable to set socket blockng state
     IETOOMANYSOCKETS = 147, // Too many sockets waiting for valid cookies since the first accepted - closing all
+    IENOCNTLMSG = 148,      // No control message or cookie was received for the timeout period
     /* Stream errors */
     IECREATESTREAM = 200,   // Unable to create a new stream (check herror/perror)
     IEINITSTREAM = 201,     // Unable to initialize stream (check herror/perror)
