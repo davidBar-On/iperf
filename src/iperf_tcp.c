@@ -120,7 +120,11 @@ iperf_tcp_accept(struct iperf_test * test)
     char    cookie[COOKIE_SIZE];
     socklen_t len;
     struct sockaddr_storage addr;
-    int r;
+    int r, count;
+    struct iperf_time start_time, now, diff_time;
+    int64_t cntl_msg_wait_us, diff_us;
+    struct timeval timeout;
+    fd_set read_set;
 
     len = sizeof(addr);
     if ((s = accept(test->listener, (struct sockaddr *) &addr, &len)) < 0) {
@@ -130,22 +134,67 @@ iperf_tcp_accept(struct iperf_test * test)
     if (test->verbose)
         iperf_printf(test, "Received new TCP stream connection request socket=%d\n", s);
 
-    /* Set timeout for receivng cookie in case request is not from iperf3 client */
-    // Fixme: NEED TO SET TIMEOUT FOR Nread - set socket to non-blocking
-    //        and loop for short time (200ms?) on (errno == EAGAIN && errno == EWOULDBLOCK)
-
     /* Read the cookie */
     memset(cookie, 0, COOKIE_SIZE);
-    if ((r = Nread(s, cookie, COOKIE_SIZE, Ptcp)) != COOKIE_SIZE) {
+
+    // Wait for the cookie with timeout
+    cntl_msg_wait_us = (test->settings->cntl_msg_wait.secs * SEC_TO_US) + test->settings->cntl_msg_wait.usecs;
+    count = 0;
+    iperf_time_now(&start_time);
+    setnonblocking(s, 1); // Set socket to non-blocking to allow timeout when waiting to cookie
+    while (count < COOKIE_SIZE) {
+        // Wait for cookie or timeout
+        iperf_time_now(&now);
+        iperf_time_diff(&now, &start_time, &diff_time);
+        diff_us = cntl_msg_wait_us - iperf_time_in_usecs(&diff_time);
+        if (diff_us <= 0) {
+            iperf_err(test, "Waiting for cookie timed out for socket %d\n", s);
+            i_errno = IERECVCOOKIE;
+            close(s);
+            return -1;
+        }
+        timeout.tv_sec = diff_us / SEC_TO_US;
+        timeout.tv_usec = diff_us - (timeout.tv_sec * SEC_TO_US);
+        FD_ZERO(&read_set);
+        FD_SET(s, &read_set);
+        if (select(s + 1, &read_set, NULL, NULL, &timeout) < 0 && errno != EINTR) {
+            iperf_err(test, "Select while waiting for cookie for socket %d failed on errno=%d\n", s, errno);
+            i_errno = IERECVCOOKIE;
+            close(s);
+            return -1;
+        }
+
+        // Read cookie
+        if ((r = Nread(s, cookie, COOKIE_SIZE - count, Ptcp)) < 0) {
+            iperf_err(test, "Read of cookie for socket %d failed on errno=%d\n", s, errno);
+            i_errno = IERECVCOOKIE;
+            close(s);
+            return -1;                
+        } else if (r == 0 && errno != EAGAIN && errno != EWOULDBLOCK) { // No data received but with error 
+            iperf_err(test, "Error while reading cookie for socket %d with errno=%d\n", s, errno);
+            i_errno = IERECVCOOKIE;
+            close(s);
+            return -1;
+        } else { // Received data (maybe 0 length)
+            count += r;
+        }
+    }
+
+    setnonblocking(s, 0); // Reset socket to blocking
+
+    if (count != COOKIE_SIZE) {
+        if (test->verbose)
+            iperf_printf(test, "Failed to read cookie for new TCP stream connection request socket=%d - bytes read=%d, errno=%d\n", s, r, errno);
+
         i_errno = IERECVCOOKIE;
         return -1;
     }
     if (test->verbose)
-        iperf_printf(test, "Received cokkie for new TCP stream connection request socket=%d with cookie=%.*s\n", s, COOKIE_SIZE, cookie);
+        iperf_printf(test, "Received cookie for new TCP stream connection request socket=%d with cookie=%.*s\n", s, COOKIE_SIZE, cookie);
 
     if (strcmp(test->cookie, cookie) != 0) {
         if (test->verbose)
-            iperf_printf(test, "Rejecting new stream with sokect=%d as socket does not match\n", s);
+            iperf_printf(test, "Rejecting new stream with sokect=%d as cookie does not match\n", s);
         if (Nwrite(s, (char*) &rbuf, sizeof(rbuf), Ptcp) < 0) {
             iperf_err(test, "failed to send access denied from busy server to to new connecting client, errno=%d", errno);
         }

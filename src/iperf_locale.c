@@ -130,7 +130,7 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 			   "                            total data rate.  Default is %d seconds)\n"
                            "  --idle-timeout #          restart idle server after # seconds in case it\n"
                            "                            got stuck (default - no timeout)\n"
-                           "  --cntl-msg-wait           Max ms to wait for a control msg or cookie (default - %d ms)\n"
+                           "  --cntl-msg-wait #         Max ms to wait for a control msg or cookie (default - %d ms)\n"
 #if defined(HAVE_SSL)
                            "  --rsa-private-key-path    path to the RSA private key used to decrypt\n"
 			   "                            authentication credentials\n"

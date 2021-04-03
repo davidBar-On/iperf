@@ -110,7 +110,7 @@ iperf_create_streams(struct iperf_test *test, int sender)
 
         sp = iperf_new_stream(test, s, sender);
         if (test->verbose)
-            iperf_printf(test, "`iperf_stream` %p successfully allocated for stream %d\n", sp, i + 1);
+            iperf_printf(test, "`iperf_stream` %p allocated for stream %d\n", sp, i + 1);
 
         if (!sp)
             return -1;
@@ -120,7 +120,7 @@ iperf_create_streams(struct iperf_test *test, int sender)
             test->on_new_stream(sp);
     }
     if (test->verbose)
-        iperf_printf(test, "All %d stream successfully created\n", test->num_streams);
+        iperf_printf(test, "All %d streams successfully created\n", test->num_streams);
 
     return 0;
 }
@@ -246,9 +246,9 @@ iperf_handle_message_client(struct iperf_test *test)
     if ((rval = read(test->ctrl_sck, (char*) &test->state, sizeof(signed char))) <= 0) {
         if (test->verbose) {
             if (is_closed(test->ctrl_sck))
-                iperf_printf(test, "Failed reading state message from server - control socket is closed\n");
+                iperf_printf(test, "Failed reading state message from server - control socket is closed, current state=%d\n", test->state);
             else
-                iperf_printf(test, "Failed reading state message from server - read return=%d, errno=%d\n", rval, errno);
+                iperf_printf(test, "Failed reading state message from server - read return=%d, errno=%d, current state=%d\n", rval, errno, test->state);
         }
         if (rval == 0) {
             i_errno = IECTRLCLOSE;
