@@ -2060,48 +2060,58 @@ iperf_exchange_parameters(struct iperf_test *test)
             return -1;
 
     } else {
-
+printf("**TEST: calling get_parameters();\n");
         if (get_parameters(test) < 0)
             return -1;
 
 #if defined(HAVE_SSL)
+printf("**TEST: HAVE_SSL calling test_is_authorized();\n");
         if (test_is_authorized(test) < 0){
+printf("**TEST: HAVE_SSL test_is_authorized() failed. errno=%s;\n", strerror(errno));
             if (iperf_set_send_state(test, SERVER_ERROR) != 0)
                 return -1;
             i_errno = IEAUTHTEST;
             err = htonl(i_errno);
+printf("**TEST: HAVE_SSL calling Nwrite();\n");
             if (Nwrite(test->ctrl_sck, (char*) &err, sizeof(err), Ptcp) < 0) {
+printf("**TEST: HAVE_SSL Nwrite() failed. errno=%s;\n", strerror(errno));
                 i_errno = IECTRLWRITE;
                 return -1;
             }
             return -1;
         }
 #endif //HAVE_SSL
-
+printf("**TEST: calling test->protocol->listen(test);\n");
         if ((s = test->protocol->listen(test)) < 0) {
-	        if (iperf_set_send_state(test, SERVER_ERROR) != 0)
+printf("**TEST: test->protocol->listen(test) failed. errno=%s;\n", strerror(errno));
+	    if (iperf_set_send_state(test, SERVER_ERROR) != 0)
                 return -1;
             err = htonl(i_errno);
+printf("**TEST: calling Nwrite11();\n");
             if (Nwrite(test->ctrl_sck, (char*) &err, sizeof(err), Ptcp) < 0) {
+printf("**TEST: Nwrite11() failed. errno=%s;\n", strerror(errno));
                 i_errno = IECTRLWRITE;
                 return -1;
             }
             err = htonl(errno);
+printf("**TEST: calling Nwrite22();\n");
             if (Nwrite(test->ctrl_sck, (char*) &err, sizeof(err), Ptcp) < 0) {
+printf("**TEST: Nwrite22() failed. errno=%s;\n", strerror(errno));
                 i_errno = IECTRLWRITE;
                 return -1;
             }
             return -1;
         }
-
+printf("**TEST: socket=%d;\n", s);
         FD_SET(s, &test->read_set);
         test->max_fd = (s > test->max_fd) ? s : test->max_fd;
         test->prot_listener = s;
 
         // Send the control message to create streams and start the test
+printf("**TEST: iperf_set_send_state(test, CREATE_STREAMS);\n");
 	if (iperf_set_send_state(test, CREATE_STREAMS) != 0)
             return -1;
-
+printf("**TEST: Server parameters exchange completed;\n");
     }
 
     return 0;

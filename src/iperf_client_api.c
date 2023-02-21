@@ -586,6 +586,7 @@ iperf_run_client(struct iperf_test * test)
 
 	result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
 	if (result < 0 && errno != EINTR) {
+            iperf_err(test, "select failed on error - %s", strerror(errno));
   	    i_errno = IESELECT;
 	    goto cleanup_and_fail;
         } else if (result == 0 && test->state == TEST_RUNNING && rcv_timeout_us > 0) {

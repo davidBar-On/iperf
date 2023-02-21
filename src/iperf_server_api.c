@@ -529,6 +529,7 @@ iperf_run_server(struct iperf_test *test)
 
         result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
         if (result < 0 && errno != EINTR) {
+            iperf_err(test, "select failed on error - %s", strerror(errno));
             cleanup_server(test);
             i_errno = IESELECT;
             return -1;
