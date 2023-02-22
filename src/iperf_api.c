@@ -2659,7 +2659,7 @@ printf("**TEST in JSON_read: enter;\n");
     if (Nread(fd, (char*) &nsize, sizeof(nsize), Ptcp) >= 0) {
 printf("**TEST in JSON_read: first Nread() returned JSON size=%x;\n", nsize);
 	hsize = ntohl(nsize);
-printf("**TEST in JSON_read: ntol() returned hzise=%x;\n", hsize);
+printf("**TEST in JSON_read: ntol() returned hzise=%d (0x%x);\n", hsize, hsize);
 	/* Allocate a buffer to hold the JSON */
 	str = (char *) calloc(sizeof(char), hsize+1);	/* +1 for trailing null */
 printf("**TEST in JSON_read: calloc() returned %p;\n", str);

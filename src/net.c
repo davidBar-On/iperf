@@ -372,10 +372,13 @@ Nread(int fd, char *buf, size_t count, int prot)
 {
     register ssize_t r;
     register size_t nleft = count;
-
+printf("**TEST in Nread: enter nleft=%ld, buf=%p;\n", nleft, buf);
     while (nleft > 0) {
+printf("**TEST in Nread: before read() nleft=%ld, buf=%p;\n", nleft, buf);
         r = read(fd, buf, nleft);
+printf("**TEST in Nread: after read() r=%ld, nleft=%ld;\n", r, nleft);
         if (r < 0) {
+printf("**TEST in Nread: read() falied. errno=%d - %s;\n", errno, strerror(errno));
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
             else
@@ -386,6 +389,7 @@ Nread(int fd, char *buf, size_t count, int prot)
         nleft -= r;
         buf += r;
     }
+printf("**TEST in Nread: before retun from read() nleft=%ld, count=%ld;\n", nleft, count);
     return count - nleft;
 }
 
