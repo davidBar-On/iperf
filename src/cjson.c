@@ -1904,7 +1904,7 @@ CJSON_PUBLIC(cJSON *) cJSON_GetArrayItem(const cJSON *array, int index)
 static cJSON *get_object_item(const cJSON * const object, const char * const name, const cJSON_bool case_sensitive)
 {
     cJSON *current_element = NULL;
-
+printf("**TEST in get_object_item: enter name=%s, object=%p;\n", name, object);
     if ((object == NULL) || (name == NULL))
     {
         return NULL;
@@ -1925,7 +1925,7 @@ static cJSON *get_object_item(const cJSON * const object, const char * const nam
             current_element = current_element->next;
         }
     }
-
+printf("**TEST in get_object_item: name=%s, current_element=%p;\n", name, current_element);
     if ((current_element == NULL) || (current_element->string == NULL)) {
         return NULL;
     }
@@ -1935,6 +1935,7 @@ static cJSON *get_object_item(const cJSON * const object, const char * const nam
 
 CJSON_PUBLIC(cJSON *) cJSON_GetObjectItem(const cJSON * const object, const char * const string)
 {
+printf("**TEST in cJSON_GetObjectItem: enter string=%s;\n", string);
     return get_object_item(object, string, false);
 }
 

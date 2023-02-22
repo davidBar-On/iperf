@@ -2061,8 +2061,10 @@ iperf_exchange_parameters(struct iperf_test *test)
 
     } else {
 printf("**TEST: calling get_parameters();\n");
-        if (get_parameters(test) < 0)
+        if (get_parameters(test) < 0) {
+printf("**TEST: get_parameters() failed;\n");
             return -1;
+        }
 
 #if defined(HAVE_SSL)
 printf("**TEST: HAVE_SSL calling test_is_authorized();\n");
@@ -2249,8 +2251,9 @@ get_parameters(struct iperf_test *test)
     int r = 0;
     cJSON *j;
     cJSON *j_p;
-
+printf("**TEST in get_parameters: enter;\n");
     j = JSON_read(test->ctrl_sck);
+printf("**TEST in get_parameters: JSON_read returned %p;\n", j);
     if (j == NULL) {
 	i_errno = IERECVPARAMS;
         r = -1;
@@ -2261,7 +2264,7 @@ get_parameters(struct iperf_test *test)
             printf("get_parameters:\n%s\n", str );
             cJSON_free(str);
 	}
-
+printf("**TEST in get_parameters: getting the parameters;\n");
 	if ((j_p = cJSON_GetObjectItem(j, "tcp")) != NULL)
 	    set_protocol(test, Ptcp);
 	if ((j_p = cJSON_GetObjectItem(j, "udp")) != NULL)
@@ -2334,8 +2337,11 @@ get_parameters(struct iperf_test *test)
 	    test->sender_has_retransmits = 1;
 	if (test->settings->rate)
 	    cJSON_AddNumberToObject(test->json_start, "target_bitrate", test->settings->rate);
+printf("**TEST in get_parameters: got the parameters;\n");
 	cJSON_Delete(j);
+printf("**TEST in get_parameters: got the parameters;\n");
     }
+printf("**TEST in get_parameters: returning %d;\n", r);
     return r;
 }
 
@@ -2649,12 +2655,17 @@ JSON_read(int fd)
      * Then read the JSON into a buffer and parse it.  Return a parsed JSON
      * structure, NULL if there was an error.
      */
+printf("**TEST in JSON_read: enter;\n");
     if (Nread(fd, (char*) &nsize, sizeof(nsize), Ptcp) >= 0) {
+printf("**TEST in JSON_read: first Nread() returned JSON size=%x;\n", nsize);
 	hsize = ntohl(nsize);
+printf("**TEST in JSON_read: ntol() returned hzise=%x;\n", hsize);
 	/* Allocate a buffer to hold the JSON */
 	str = (char *) calloc(sizeof(char), hsize+1);	/* +1 for trailing null */
+printf("**TEST in JSON_read: calloc() returned %p;\n", str);
 	if (str != NULL) {
 	    rc = Nread(fd, str, hsize, Ptcp);
+printf("**TEST in JSON_read: second Nread() returned %d bytes;\n", rc);
 	    if (rc >= 0) {
 		/*
 		 * We should be reading in the number of bytes corresponding to the
@@ -2663,15 +2674,19 @@ JSON_read(int fd)
 		 * correct number of bytes.
 		 */
 		if (rc == hsize) {
+printf("**TEST in JSON_read: calling cJSON_Parse();\n");
 		    json = cJSON_Parse(str);
+printf("**TEST in JSON_read: cJSON_Parse() returned %p;\n", json);
 		}
 		else {
 		    printf("WARNING:  Size of data read does not correspond to offered length\n");
 		}
 	    }
 	}
+printf("**TEST in JSON_read: calling free(str);\n");
 	free(str);
     }
+printf("**TEST in JSON_read: return %p;\n", json);
     return json;
 }
 
