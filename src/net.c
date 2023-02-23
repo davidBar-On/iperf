@@ -374,6 +374,14 @@ Nread(int fd, char *buf, size_t count, int prot)
     register size_t nleft = count;
 printf("**TEST in Nread: enter nleft=%ld, buf=%p;\n", nleft, buf);
     while (nleft > 0) {
+int result;
+fd_set read_set;
+struct timeval timeout;
+FD_ZERO(&read_set); FD_SET(fd, &read_set);
+timeout.tv_sec = 0; timeout.tv_usec = 3000;
+printf("**TEST in Nread: before select() fd=%d;\n", fd);
+result = select(fd + 1, &read_set, NULL, NULL, &timeout);
+printf("**TEST in Nread: select() return value=%d, errno=%d - %s;\n", result, errno, strerror(errno));
 printf("**TEST in Nread: before read() nleft=%ld, buf=%p;\n", nleft, buf);
         r = read(fd, buf, nleft);
 printf("**TEST in Nread: after read() r=%ld, nleft=%ld;\n", r, nleft);
