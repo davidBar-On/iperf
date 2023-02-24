@@ -65,6 +65,8 @@
 #include "net.h"
 #include "timer.h"
 
+#include <time.h>
+
 /*
  * Declaration of gerror in iperf_error.c.  Most other files in iperf3 can get this
  * by including "iperf.h", but net.c lives "below" this layer.  Clearly the
@@ -362,6 +364,21 @@ netannounce(int domain, int proto, const char *local, const char *bind_dev, int 
     return s;
 }
 
+int64_t my_get_time_us() {
+    struct timespec ts;
+    int result;
+    result = clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (result == 0) {
+        return ((ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
+    } else {
+        return result;
+    }
+}
+
+int64_t my_time_diff_us(int64_t now) {
+    return (my_get_time_us() - now);
+}
+
 
 /*******************************************************************/
 /* reads 'count' bytes from a socket  */
@@ -373,8 +390,12 @@ Nread(int fd, char *buf, size_t count, int prot)
     register ssize_t r;
     register size_t nleft = count;
 printf("**TEST in Nread: enter nleft=%ld, buf=%p;\n", nleft, buf);
+int64_t now;
+now = my_get_time_us();
+printf("**TEST in Nread: now=%ld, time-diff=%ld;\n", now, my_time_diff_us(now));
     while (nleft > 0) {
-int result;
+/*****
+ * int result;
 fd_set read_set;
 struct timeval timeout;
 FD_ZERO(&read_set); FD_SET(fd, &read_set);
@@ -382,11 +403,13 @@ timeout.tv_sec = 0; timeout.tv_usec = 3000;
 printf("**TEST in Nread: before select() fd=%d;\n", fd);
 result = select(fd + 1, &read_set, NULL, NULL, &timeout);
 printf("**TEST in Nread: select() return value=%d, errno=%d - %s;\n", result, errno, strerror(errno));
-printf("**TEST in Nread: before read() nleft=%ld, buf=%p;\n", nleft, buf);
-        r = read(fd, buf, nleft);
-printf("**TEST in Nread: after read() r=%ld, nleft=%ld;\n", r, nleft);
+*******/
+printf("**TEST in Nread (time=%ld): before read() nleft=%ld, buf=%p;\n", my_time_diff_us(now), nleft, buf);
+        //r = read(fd, buf, nleft);
+r = read(fd, buf, 1);
+printf("**TEST in Nread (time=%ld): after read() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
         if (r < 0) {
-printf("**TEST in Nread: read() falied. errno=%d - %s;\n", errno, strerror(errno));
+printf("**TEST in Nread (time=%ld): read() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
             else
@@ -397,7 +420,7 @@ printf("**TEST in Nread: read() falied. errno=%d - %s;\n", errno, strerror(errno
         nleft -= r;
         buf += r;
     }
-printf("**TEST in Nread: before retun from read() nleft=%ld, count=%ld;\n", nleft, count);
+printf("**TEST in Nread (time=%ld): before retun from read() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
     return count - nleft;
 }
 
