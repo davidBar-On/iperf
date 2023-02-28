@@ -420,7 +420,7 @@ printf("**TEST in Nread (time=%ld): read() falied. errno=%d - %s;\n", my_time_di
         nleft -= r;
         buf += r;
     }
-printf("**TEST in Nread (time=%ld): before retun from read() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
+printf("**TEST in Nread (time=%ld): before retun from Nread() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
     return count - nleft;
 }
 
@@ -434,10 +434,16 @@ Nwrite(int fd, const char *buf, size_t count, int prot)
 {
     register ssize_t r;
     register size_t nleft = count;
-
+printf("***TEST in Nwrite: enter count=%ld, fd=%d;\n", count, fd);
+int64_t now;
+now = my_get_time_us();
+printf("***TEST in Nwrite: now=%ld, time-diff=%ld;\n", now, my_time_diff_us(now));
     while (nleft > 0) {
-	r = write(fd, buf, nleft);
+	//r = write(fd, buf, nleft);
+r = write(fd, buf, 1);
+printf("***TEST in Nwrite (time=%ld): after write() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
 	if (r < 0) {
+printf("***TEST in Nwrite (time=%ld): write() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
 	    switch (errno) {
 		case EINTR:
 		case EAGAIN:
@@ -457,6 +463,7 @@ Nwrite(int fd, const char *buf, size_t count, int prot)
 	nleft -= r;
 	buf += r;
     }
+printf("***TEST in Nwrite (time=%ld): before retun from Nwrite() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
     return count;
 }
 
