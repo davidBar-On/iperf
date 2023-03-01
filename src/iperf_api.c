@@ -2632,7 +2632,7 @@ JSON_write(int fd, cJSON *json)
 	if (Nwrite(fd, (char*) &nsize, sizeof(nsize), Ptcp) < 0)
 	    r = -1;
 	else {
-	    if (Nwrite(fd, str, hsize, Ptcp) < 0)
+	    if (NwriteOneByOne(fd, str, hsize, Ptcp) < 0)
 		r = -1;
 	}
 	cJSON_free(str);
@@ -2664,7 +2664,7 @@ printf("**TEST in JSON_read: ntol() returned hzise=%d (0x%x);\n", hsize, hsize);
 	str = (char *) calloc(sizeof(char), hsize+1);	/* +1 for trailing null */
 printf("**TEST in JSON_read: calloc() returned %p;\n", str);
 	if (str != NULL) {
-	    rc = Nread(fd, str, hsize, Ptcp);
+	    rc = NreadOneByOne(fd, str, hsize, Ptcp);
 printf("**TEST in JSON_read: second Nread() returned %d bytes;\n", rc);
 	    if (rc >= 0) {
 		/*

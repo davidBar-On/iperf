@@ -33,6 +33,8 @@ int netdial(int domain, int proto, const char *local, const char *bind_dev, int 
 int netannounce(int domain, int proto, const char *local, const char *bind_dev, int port);
 int Nread(int fd, char *buf, size_t count, int prot);
 int Nwrite(int fd, const char *buf, size_t count, int prot) /* __attribute__((hot)) */;
+int NreadOneByOne(int fd, char *buf, size_t count, int prot);
+int NwriteOneByOne(int fd, const char *buf, size_t count, int prot) /* __attribute__((hot)) */;
 int has_sendfile(void);
 int Nsendfile(int fromfd, int tofd, const char *buf, size_t count) /* __attribute__((hot)) */;
 int setnonblocking(int fd, int nonblocking);

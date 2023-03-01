@@ -385,6 +385,36 @@ int64_t my_time_diff_us(int64_t now) {
 /********************************************************************/
 
 int
+NreadOneByOne(int fd, char *buf, size_t count, int prot)
+{
+    register ssize_t r;
+    register size_t nleft = count;
+printf("**TEST in NreadOnebyOne: enter nleft=%ld, buf=%p;\n", nleft, buf);
+int64_t now;
+now = my_get_time_us();
+printf("**TEST in NreadOnebyOne: now=%ld, time-diff=%ld;\n", now, my_time_diff_us(now));
+    while (nleft > 0) {
+printf("**TEST in NreadOnebyOne (time=%ld): before read() nleft=%ld, buf=%p;\n", my_time_diff_us(now), nleft, buf);
+        //r = read(fd, buf, nleft);
+r = read(fd, buf, 1);
+printf("**TEST in NreadOnebyOne (time=%ld): after read() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
+        if (r < 0) {
+printf("**TEST in NreadOnebyOne (time=%ld): read() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
+                break;
+            else
+                return NET_HARDERROR;
+        } else if (r == 0)
+            break;
+
+        nleft -= r;
+        buf += r;
+    }
+printf("**TEST in NreadOnebyOne (time=%ld): before retun from Nread() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
+    return count - nleft;
+}
+
+int
 Nread(int fd, char *buf, size_t count, int prot)
 {
     register ssize_t r;
@@ -405,8 +435,7 @@ result = select(fd + 1, &read_set, NULL, NULL, &timeout);
 printf("**TEST in Nread: select() return value=%d, errno=%d - %s;\n", result, errno, strerror(errno));
 *******/
 printf("**TEST in Nread (time=%ld): before read() nleft=%ld, buf=%p;\n", my_time_diff_us(now), nleft, buf);
-        //r = read(fd, buf, nleft);
-r = read(fd, buf, 1);
+        r = read(fd, buf, nleft);
 printf("**TEST in Nread (time=%ld): after read() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
         if (r < 0) {
 printf("**TEST in Nread (time=%ld): read() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
@@ -430,6 +459,44 @@ printf("**TEST in Nread (time=%ld): before retun from Nread() nleft=%ld, count=%
  */
 
 int
+NwriteOneByOne(int fd, const char *buf, size_t count, int prot)
+{
+    register ssize_t r;
+    register size_t nleft = count;
+printf("***TEST in NwriteOnebyOne: enter count=%ld, fd=%d;\n", count, fd);
+int64_t now;
+now = my_get_time_us();
+printf("***TEST in NwriteOnebyOne: now=%ld, time-diff=%ld;\n", now, my_time_diff_us(now));
+    while (nleft > 0) {
+	//r = write(fd, buf, nleft);
+r = write(fd, buf, 1);
+printf("***TEST in NwriteOnebyOne (time=%ld): after write() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
+	if (r < 0) {
+printf("***TEST in NwriteOnebyOne (time=%ld): write() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
+	    switch (errno) {
+		case EINTR:
+		case EAGAIN:
+#if (EAGAIN != EWOULDBLOCK)
+		case EWOULDBLOCK:
+#endif
+		return count - nleft;
+
+		case ENOBUFS:
+		return NET_SOFTERROR;
+
+		default:
+		return NET_HARDERROR;
+	    }
+	} else if (r == 0)
+	    return NET_SOFTERROR;
+	nleft -= r;
+	buf += r;
+    }
+printf("***TEST in NwriteOnebyOne (time=%ld): before retun from Nwrite() nleft=%ld, count=%ld;\n", my_time_diff_us(now), nleft, count);
+    return count;
+}
+
+int
 Nwrite(int fd, const char *buf, size_t count, int prot)
 {
     register ssize_t r;
@@ -439,8 +506,7 @@ int64_t now;
 now = my_get_time_us();
 printf("***TEST in Nwrite: now=%ld, time-diff=%ld;\n", now, my_time_diff_us(now));
     while (nleft > 0) {
-	//r = write(fd, buf, nleft);
-r = write(fd, buf, 1);
+	r = write(fd, buf, nleft);
 printf("***TEST in Nwrite (time=%ld): after write() r=%ld, nleft=%ld;\n", my_time_diff_us(now), r, nleft);
 	if (r < 0) {
 printf("***TEST in Nwrite (time=%ld): write() falied. errno=%d - %s;\n", my_time_diff_us(now), errno, strerror(errno));
