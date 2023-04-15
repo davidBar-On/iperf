@@ -279,6 +279,8 @@ struct iperf_test
     TAILQ_HEAD(xbind_addrhead, xbind_entry) xbind_addrs; /* all -X opts */
     int       bind_port;                        /* --cport option */
     int       server_port;
+    int       num_of_server_ports;              /* second value of --port option */
+    int       server_udp_streams_accepted;          /* offset of last server port used - 0 means none used (max `num_of_server_ports`) */
     int       omit;                             /* duration of omit period (-O flag) */
     int       duration;                         /* total duration of test (-t flag) */
     char     *diskfile_name;			/* -F option */
@@ -437,5 +439,10 @@ extern int gerror; /* error value from getaddrinfo(3), for use in internal error
 
 /* In Reverse mode, maximum number of packets to wait for "accept" response - to handle out of order packets */
 #define MAX_REVERSE_OUT_OF_ORDER_PACKETS 2
+
+/* Any type of WIndows OS or Cygwin */
+#if (defined(__CYGWIN__) || defined(_WIN32) || defined(_WIN64) || defined(__WINDOWS__))
+#define __WINDOWS_ANY__ 1
+#endif
 
 #endif /* !__IPERF_H */

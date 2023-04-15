@@ -402,6 +402,9 @@ enum {
     IERVRSONLYRCVTIMEOUT = 32,  // Client receive timeout is valid only in reverse mode
     IESNDTIMEOUT = 33,      // Illegal message send timeout
     IEUDPFILETRANSFER = 34, // Cannot transfer file using UDP
+    IENUMPORTS = 35,        // number of ports is less than 1 or larger than server limit
+    IEPORTNUM = 36,         // requested number of parallel streams is larger than the number of ports set for the server
+    IECYGWINPORTSUDP = 37,  // different port (parameter `-p #/<num of ports>`) should be available for parallel UDP streams under Cygwin
     /* Test errors */
     IENEWTEST = 100,        // Unable to create a new test (check perror)
     IEINITTEST = 101,       // Test initialization failed (check perror)
