@@ -1306,7 +1306,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 break;
             case 'P':
                 test->num_streams = atoi(optarg);
-                if (test->num_streams > MAX_STREAMS) {
+                if (test->num_streams > MAX_STREAMS || test->num_streams < 1) {
                     i_errno = IENUMSTREAMS;
                     return -1;
                 }

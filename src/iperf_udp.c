@@ -461,13 +461,17 @@ iperf_udp_accept(struct iperf_test *test)
      */
 #if (defined(__WINDOWS_ANY__))
     if (test->num_of_server_ports > 1) {
-        if (test->server_udp_streams_accepted >= test->num_of_server_ports) {
+        test->server_udp_streams_accepted++;
+        if (test->server_udp_streams_accepted > test->num_of_server_ports) {
             i_errno = IEPORTNUM;
             return -1;
         }
-        test->server_udp_streams_accepted++;
-        port += test->server_udp_streams_accepted;
-        buf += 1;
+
+        /* Change port number for next stream (but not for the last for backward compatibility) */
+        if (test->server_udp_streams_accepted < test->num_streams * ((test->bidirectional ? 2 : 1))) {
+            port += test->server_udp_streams_accepted;
+            buf += 1;
+        }
     }
 #endif
 
@@ -651,8 +655,9 @@ iperf_udp_connect(struct iperf_test *test)
     }
 
     /*
-    * If the recived value indicates the port number, use it as the next connection port
-    */
+     * On WIndows, to overcome the limit of not supporting parallel UDP streams using the same port,
+     * `buf` will be `UDP_CONNECT_REPLY + `, so a different server port will be used for the next connection.
+     */
     if (buf != LEGACY_UDP_CONNECT_REPLY) {
         test->server_port += buf - UDP_CONNECT_REPLY;
     }
