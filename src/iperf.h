@@ -435,6 +435,7 @@ extern int gerror; /* error value from getaddrinfo(3), for use in internal error
 /* UDP "connect" message and reply (textual value for Wireshark, etc. readability - legacy was numeric) */
 #define UDP_CONNECT_MSG 0x36373839          // "6789" - legacy value was 123456789
 #define UDP_CONNECT_REPLY 0x39383736        // "9876" - legacy value was 987654321
+#define UDP_CONNECT_REPLY_NEXT_PORT 0x39383735 // "9875": for Windows - indicates use next port
 #define LEGACY_UDP_CONNECT_REPLY 987654321  // Old servers may still reply with the legacy value
 
 /* In Reverse mode, maximum number of packets to wait for "accept" response - to handle out of order packets */
@@ -442,7 +443,7 @@ extern int gerror; /* error value from getaddrinfo(3), for use in internal error
 
 /* Any type of WIndows OS or Cygwin */
 #if (defined(__CYGWIN__) || defined(_WIN32) || defined(_WIN64) || defined(__WINDOWS__))
-#define __WINDOWS_ANY__ 1
-#endif
+#define WINDOWS_ANY 1
+#endif /* Any Windows type */
 
 #endif /* !__IPERF_H */

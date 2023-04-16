@@ -456,24 +456,20 @@ iperf_udp_accept(struct iperf_test *test)
 
     /*
      * Since Windows does not suppport parallel UDP streams using the same local and remote ports,
-     * different server port is used for each steam - indicated by replying with "UDP_CONNECT_REPLY + 1".
+     * different server port is used for each steam - indicated by replying with UDP_CONNECT_REPLY_NEXT_PORT.
      * Each stream, the listening port number is increased by 1.
      */
-#if (defined(__WINDOWS_ANY__))
+#if (defined(WINDOWS_ANY))
     if (test->num_of_server_ports > 1) {
         test->server_udp_streams_accepted++;
-        if (test->server_udp_streams_accepted > test->num_of_server_ports) {
-            i_errno = IEPORTNUM;
-            return -1;
-        }
 
         /* Change port number for next stream (but not for the last for backward compatibility) */
         if (test->server_udp_streams_accepted < test->num_streams * ((test->bidirectional ? 2 : 1))) {
             port += test->server_udp_streams_accepted;
-            buf += 1;
+            buf = UDP_CONNECT_REPLY_NEXT_PORT;
         }
     }
-#endif
+#endif /* WINDOWS_ANY */
 
     /*
      * Create a new "listening" socket to replace the one we were using before.
@@ -617,17 +613,6 @@ iperf_udp_connect(struct iperf_test *test)
         return -1;
     }
 
-/*
- * Since Windows does not suppport parallel UDP streams using the same local and remote ports,
- * different server port is used for each steam - indicated by "buf == UDP_CONNECT_REPLY + 1".
- */
-#if defined(__WINDOWS_ANY__)
-    #define UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION_DYNAMIC (buf < UDP_CONNECT_REPLY || buf > UDP_CONNECT_REPLY + 1)
-#else
-    #define UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION_DYNAMIC (buf != UDP_CONNECT_REPLY)
-#endif
-#define UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION (buf != LEGACY_UDP_CONNECT_REPLY) && UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION_DYNAMIC
-
     /*
      * Wait until the server replies back to us with the "accept" response.
      */
@@ -647,19 +632,23 @@ iperf_udp_connect(struct iperf_test *test)
             printf("Connect received for Socket %d, sz=%d, buf=%x, i=%d, max_len_wait_for_reply=%d\n", s, sz, buf, i, max_len_wait_for_reply);
         }
         i += sz;
-    } while (UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION && i < max_len_wait_for_reply);
+    } while (buf != UDP_CONNECT_REPLY && buf != UDP_CONNECT_REPLY_NEXT_PORT && buf != LEGACY_UDP_CONNECT_REPLY && i < max_len_wait_for_reply);
 
-    if (UDP_CONNECT_REPLY_NOT_RECEIVED_CONDITION) {
+    /*
+     * Since Windows does not suppport parallel UDP streams using the same local and remote ports,
+     * different server port is used for each steam - indicated by UDP_CONNECT_REPLY_NEXT_PORT.
+     */
+    if (buf != UDP_CONNECT_REPLY && buf != UDP_CONNECT_REPLY_NEXT_PORT && buf != LEGACY_UDP_CONNECT_REPLY) {
         i_errno = IESTREAMREAD;
         return -1;
     }
 
     /*
      * On WIndows, to overcome the limit of not supporting parallel UDP streams using the same port,
-     * `buf` will be `UDP_CONNECT_REPLY + `, so a different server port will be used for the next connection.
+     * `buf` will be UDP_CONNECT_REPLY_NEXT_PORT - indicating different server port for the next connection.
      */
-    if (buf != LEGACY_UDP_CONNECT_REPLY) {
-        test->server_port += buf - UDP_CONNECT_REPLY;
+    if (buf == UDP_CONNECT_REPLY_NEXT_PORT) {
+        test->server_port += 1;
     }
 
     return s;

@@ -470,9 +470,6 @@ iperf_strerror(int int_errno)
         case IEPORTNUM:
 	    snprintf(errstr, len, "requested number of parallel streams is larger than the number of ports set for the server");
             break;
-        case IECYGWINPORTSUDP:
-	    snprintf(errstr, len, "different port (parameter `-p #/<num of ports>`) should be available for parallel UDP streams under Cygwin");
-            break;
 	default:
 	    snprintf(errstr, len, "int_errno=%d", int_errno);
 	    perr = 1;

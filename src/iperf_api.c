@@ -63,9 +63,9 @@
 #include <sys/cpuset.h>
 #endif /* HAVE_CPUSET_SETAFFINITY */
 
-#if defined(__WINDOWS_ANY__)
+#if defined(WINDOWS_ANY)
 #define CPU_SETSIZE __CPU_SETSIZE
-#endif /* __CYGWIN__, _WIN32, _WIN64, __WINDOWS__ */
+#endif /* WINDOWS_ANY */
 
 #if defined(HAVE_SETPROCESSAFFINITYMASK)
 #include <Windows.h>
@@ -1131,6 +1131,8 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     while ((flag = getopt_long(argc, argv, "p:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'p':
+                slash = optarg;
+#if defined(WINDOWS_ANY)
             	slash = strchr(optarg, '/');
 		if (slash) {
 		    *slash = '\0';
@@ -1146,6 +1148,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                         }
                     }
 		}
+#endif /* WINDOWS_ANY */
                 if (!slash || strlen(optarg) > 0) {
 		    portno = atoi(optarg);
 		    if (portno < 1 || portno > 65535) {
@@ -2088,25 +2091,16 @@ iperf_exchange_parameters(struct iperf_test *test)
         if (get_parameters(test) < 0)
             return -1;
 
-        // Check spcific conditions required for UDP under Cygwin as it does not support parallel stream using same port
+        // Check spcific conditions required for UDP under Windows as parallel streams
+        // using the same port numebr is not supported.
+#if defined(WINDOWS_ANY)
         if (test->protocol->id == Pudp) {
-            // Ensure UDP ports pool size if large enough for the required number of streams
-            if (test->num_of_server_ports > 1) {
-                if (test->num_of_server_ports < test->num_streams) {
-                    i_errno = IEPORTNUM;
-                    return -1;
-                }
+            if (test->num_of_server_ports < test->num_streams * (test->bidirectional ? 2 : 1)) {
+                i_errno = IEPORTNUM;
+                return -1;
             }
-#if defined(__CYGWIN__)
-            else {
-                // Parallel UDP streams under Cygwin must use different port number per stream
-                if (test->num_streams > 1) {
-                    i_errno = IECYGWINPORTSUDP;
-                    return -1;
-                }
-            }
-#endif /* __CYGWIN__ */
         }
+#endif /* WINDOWS_ANY */
 
 #if defined(HAVE_SSL)
         if (test_is_authorized(test) < 0){
