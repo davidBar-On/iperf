@@ -569,8 +569,13 @@ iperf_run_client(struct iperf_test * test)
 	iperf_time_now(&now);
 	timeout = tmr_timeout(&now);
 
-        // In reverse active mode client ensures data is received
-        if (test->state == TEST_RUNNING && rcv_timeout_us > 0) {
+        // In reverse active mode client ensures data is received.
+        // Same for receivin control messages at the end of the test. 
+        if (rcv_timeout_us > 0 && (test->state == TEST_RUNNING
+                                   || test->state == TEST_END
+                                   || test->state == EXCHANGE_RESULTS
+                                   || test->state == DISPLAY_RESULTS) )
+        {
             timeout_us = -1;
             if (timeout != NULL) {
                 used_timeout.tv_sec = timeout->tv_sec;
@@ -583,8 +588,9 @@ iperf_run_client(struct iperf_test * test)
             }
             timeout = &used_timeout;
         }
-
+printf("*** [TEST] ??? iperf_run_client: BEFORE select state=%d;\n", test->state);
 	result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
+printf("*** [TEST] iperf_run_client: AFTER select() state=%d, result=%d;\n", test->state, result);
 	if (result < 0 && errno != EINTR) {
   	    i_errno = IESELECT;
 	    goto cleanup_and_fail;

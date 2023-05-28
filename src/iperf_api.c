@@ -2663,21 +2663,25 @@ JSON_write(int fd, cJSON *json)
     uint32_t hsize, nsize;
     char *str;
     int r = 0;
-
+printf("*** [TEST] JSON_write: ENTER;\n");
     str = cJSON_PrintUnformatted(json);
     if (str == NULL)
 	r = -1;
     else {
 	hsize = strlen(str);
 	nsize = htonl(hsize);
+printf("*** [TEST] JSON_write: BEFORE Nwrite() 4 bytes header hsize=%d;\n", hsize);
 	if (Nwrite(fd, (char*) &nsize, sizeof(nsize), Ptcp) < 0)
 	    r = -1;
 	else {
+printf("*** [TEST] JSON_write: BEFORE Nwrite() JSON hsize=%d;\n", hsize);
 	    if (Nwrite(fd, str, hsize, Ptcp) < 0)
 		r = -1;
 	}
+printf("*** [TEST] JSON_write: AFTER  Nwrite()s r=%d;\n", r);
 	cJSON_free(str);
     }
+printf("*** [TEST] JSON_write: RETURN r=%d;\n", r);
     return r;
 }
 
@@ -2696,12 +2700,16 @@ JSON_read(int fd)
      * Then read the JSON into a buffer and parse it.  Return a parsed JSON
      * structure, NULL if there was an error.
      */
+printf("*** [TEST] JSON_read: ENTER;\n");
     if (Nread(fd, (char*) &nsize, sizeof(nsize), Ptcp) >= 0) {
 	hsize = ntohl(nsize);
+printf("*** [TEST] JSON_read: AFTER Nread() 4 bytes header hsize=%d;\n", hsize);
 	/* Allocate a buffer to hold the JSON */
 	str = (char *) calloc(sizeof(char), hsize+1);	/* +1 for trailing null */
 	if (str != NULL) {
+printf("*** [TEST] JSON_read: BEFORE Nread() the JSON;\n");
 	    rc = Nread(fd, str, hsize, Ptcp);
+printf("*** [TEST] JSON_read: AFTER Nread() the JSON rc=%d;\n", rc);
 	    if (rc >= 0) {
 		/*
 		 * We should be reading in the number of bytes corresponding to the
@@ -2719,6 +2727,7 @@ JSON_read(int fd)
 	}
 	free(str);
     }
+printf("*** [TEST] JSON_read: RETURN;\n");
     return json;
 }
 

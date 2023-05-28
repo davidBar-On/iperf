@@ -513,7 +513,11 @@ iperf_run_server(struct iperf_test *test)
                 used_timeout.tv_usec = 0;
                 timeout = &used_timeout;
             }
-        } else if (test->mode != SENDER) {     // In non-reverse active mode server ensures data is received
+        } else if (test->mode != SENDER        // In non-reverse active mode server ensures data is received.
+                   || test->state == TEST_END  // Same for receivin control messages at the end of the test.
+                   || test->state == EXCHANGE_RESULTS
+                   || test->state == DISPLAY_RESULTS)
+        {
             timeout_us = -1;
             if (timeout != NULL) {
                 used_timeout.tv_sec = timeout->tv_sec;
@@ -526,8 +530,9 @@ iperf_run_server(struct iperf_test *test)
             }
             timeout = &used_timeout;
         }
-
+printf("*** [TEST] iperf_run_server: BEFORE select() state=%d;\n", test->state);
         result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
+printf("*** [TEST] iperf_run_server: AFTER select() state=%d, result=%d;\n", test->state, result);
         if (result < 0 && errno != EINTR) {
             cleanup_server(test);
             i_errno = IESELECT;
