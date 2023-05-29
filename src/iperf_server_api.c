@@ -578,6 +578,14 @@ printf("*** [TEST] iperf_run_server: AFTER select() state=%d, result=%d;\n", tes
             }
         }
 
+printf("*** [TEST] ??? iperf_run_server: Received sockets (control soket is %d): ", test->ctrl_sck);
+int i;
+for (i = 0; i < 16; i++) {
+    if (FD_ISSET(i, &read_set))
+        printf("%d ", i);
+}
+printf(";\n"); fflush(stdout);
+
 	if (result > 0) {
             iperf_time_now(&last_receive_time);
             if (FD_ISSET(test->listener, &read_set)) {

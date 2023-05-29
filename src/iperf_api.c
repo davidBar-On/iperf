@@ -2710,7 +2710,7 @@ JSON_read(int fd)
      * Then read the JSON into a buffer and parse it.  Return a parsed JSON
      * structure, NULL if there was an error.
      */
-printf("*** [TEST] JSON_read: ENTER;\n"); fflush(stdout);
+printf("*** [TEST] JSON_read: ENTER fd=%d;\n", fd); fflush(stdout);
     if (Nread(fd, (char*) &nsize, sizeof(nsize), Ptcp) >= 0) {
 	hsize = ntohl(nsize);
 printf("*** [TEST] JSON_read: AFTER Nread() 4 bytes header hsize=%d;\n", hsize); fflush(stdout);

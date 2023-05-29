@@ -56,9 +56,9 @@ int
 iperf_tcp_recv(struct iperf_stream *sp)
 {
     int r;
-
+printf("*** [TEST] ??? iperf_tcp_recv: ENTER socket=%d);\n", sp->socket); fflush(stdout);
     r = Nread(sp->socket, sp->buffer, sp->settings->blksize, Ptcp);
-
+printf("*** [TEST] ??? iperf_tcp_recv: AFTER Nread socket=%d, r=%d);\n", sp->socket, r); fflush(stdout);
     if (r < 0)
         return r;
 
@@ -69,7 +69,7 @@ iperf_tcp_recv(struct iperf_stream *sp)
     }
     else {
 	if (sp->test->debug)
-	    printf("Late receive, state = %d\n", sp->test->state);
+	    printf("Late receive, state = %d, bytes received = %d\n", sp->test->state, r); // [DBO] !!!???
     }
 
     return r;
