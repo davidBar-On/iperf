@@ -2138,21 +2138,27 @@ iperf_exchange_parameters(struct iperf_test *test)
 int
 iperf_exchange_results(struct iperf_test *test)
 {
+printf("*** [TEST] iperf_exchange_results: ENTER;\n"); fflush(stdout);
     if (test->role == 'c') {
         /* Send results to server. */
+printf("*** [TEST] iperf_exchange_results: BEFORE send_results();\n"); fflush(stdout);
 	if (send_results(test) < 0)
             return -1;
         /* Get server results. */
+printf("*** [TEST] iperf_exchange_results: BEFORE get_results();\n"); fflush(stdout);
         if (get_results(test) < 0)
             return -1;
     } else {
         /* Get client results. */
+printf("*** [TEST] iperf_exchange_results: BEFORE get_results();\n"); fflush(stdout);
         if (get_results(test) < 0)
             return -1;
         /* Send results to client. */
+printf("*** [TEST] iperf_exchange_results: BEFORE send_results();\n"); fflush(stdout);
 	if (send_results(test) < 0)
             return -1;
     }
+printf("*** [TEST] iperf_exchange_results: EXIT;\n"); fflush(stdout);
     return 0;
 }
 
@@ -2360,6 +2366,7 @@ get_parameters(struct iperf_test *test)
 static int
 send_results(struct iperf_test *test)
 {
+printf("*** [TEST] send_results: ENTER;\n"); fflush(stdout);
     int r = 0;
     cJSON *j;
     cJSON *j_streams;
@@ -2461,6 +2468,7 @@ send_results(struct iperf_test *test)
 	}
 	cJSON_Delete(j);
     }
+printf("*** [TEST] send_results: EXIT r=%d;\n", r); fflush(stdout);
     return r;
 }
 
@@ -2469,6 +2477,7 @@ send_results(struct iperf_test *test)
 static int
 get_results(struct iperf_test *test)
 {
+printf("*** [TEST] get_results: ENTER;\n"); fflush(stdout);
     int r = 0;
     cJSON *j;
     cJSON *j_cpu_util_total;
@@ -2652,6 +2661,7 @@ get_results(struct iperf_test *test)
 
 	cJSON_Delete(j);
     }
+printf("*** [TEST] get_results: EXIT r=%d;\n", r); fflush(stdout);
     return r;
 }
 
@@ -2663,25 +2673,25 @@ JSON_write(int fd, cJSON *json)
     uint32_t hsize, nsize;
     char *str;
     int r = 0;
-printf("*** [TEST] JSON_write: ENTER;\n");
+printf("*** [TEST] JSON_write: ENTER;\n"); fflush(stdout);
     str = cJSON_PrintUnformatted(json);
     if (str == NULL)
 	r = -1;
     else {
 	hsize = strlen(str);
 	nsize = htonl(hsize);
-printf("*** [TEST] JSON_write: BEFORE Nwrite() 4 bytes header hsize=%d;\n", hsize);
+printf("*** [TEST] JSON_write: BEFORE Nwrite() 4 bytes header hsize=%d;\n", hsize); fflush(stdout);
 	if (Nwrite(fd, (char*) &nsize, sizeof(nsize), Ptcp) < 0)
 	    r = -1;
 	else {
-printf("*** [TEST] JSON_write: BEFORE Nwrite() JSON hsize=%d;\n", hsize);
+printf("*** [TEST] JSON_write: BEFORE Nwrite() JSON hsize=%d;\n", hsize); fflush(stdout);
 	    if (Nwrite(fd, str, hsize, Ptcp) < 0)
 		r = -1;
 	}
-printf("*** [TEST] JSON_write: AFTER  Nwrite()s r=%d;\n", r);
+printf("*** [TEST] JSON_write: AFTER  Nwrite()s r=%d;\n", r); fflush(stdout);
 	cJSON_free(str);
     }
-printf("*** [TEST] JSON_write: RETURN r=%d;\n", r);
+printf("*** [TEST] JSON_write: RETURN r=%d;\n", r); fflush(stdout);
     return r;
 }
 
@@ -2700,16 +2710,16 @@ JSON_read(int fd)
      * Then read the JSON into a buffer and parse it.  Return a parsed JSON
      * structure, NULL if there was an error.
      */
-printf("*** [TEST] JSON_read: ENTER;\n");
+printf("*** [TEST] JSON_read: ENTER;\n"); fflush(stdout);
     if (Nread(fd, (char*) &nsize, sizeof(nsize), Ptcp) >= 0) {
 	hsize = ntohl(nsize);
-printf("*** [TEST] JSON_read: AFTER Nread() 4 bytes header hsize=%d;\n", hsize);
+printf("*** [TEST] JSON_read: AFTER Nread() 4 bytes header hsize=%d;\n", hsize); fflush(stdout);
 	/* Allocate a buffer to hold the JSON */
 	str = (char *) calloc(sizeof(char), hsize+1);	/* +1 for trailing null */
 	if (str != NULL) {
-printf("*** [TEST] JSON_read: BEFORE Nread() the JSON;\n");
+printf("*** [TEST] JSON_read: BEFORE Nread() the JSON;\n"); fflush(stdout);
 	    rc = Nread(fd, str, hsize, Ptcp);
-printf("*** [TEST] JSON_read: AFTER Nread() the JSON rc=%d;\n", rc);
+printf("*** [TEST] JSON_read: AFTER Nread() the JSON rc=%d;\n", rc); fflush(stdout);
 	    if (rc >= 0) {
 		/*
 		 * We should be reading in the number of bytes corresponding to the
@@ -2727,7 +2737,7 @@ printf("*** [TEST] JSON_read: AFTER Nread() the JSON rc=%d;\n", rc);
 	}
 	free(str);
     }
-printf("*** [TEST] JSON_read: RETURN;\n");
+printf("*** [TEST] JSON_read: RETURN;\n"); fflush(stdout);
     return json;
 }
 

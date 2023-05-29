@@ -588,9 +588,9 @@ iperf_run_client(struct iperf_test * test)
             }
             timeout = &used_timeout;
         }
-printf("*** [TEST] ??? iperf_run_client: BEFORE select state=%d;\n", test->state);
+printf("*** [TEST] ??? iperf_run_client: BEFORE select state=%d;\n", test->state); fflush(stdout);
 	result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
-printf("*** [TEST] iperf_run_client: AFTER select() state=%d, result=%d;\n", test->state, result);
+printf("*** [TEST] iperf_run_client: AFTER select() state=%d, result=%d;\n", test->state, result); fflush(stdout);
 	if (result < 0 && errno != EINTR) {
   	    i_errno = IESELECT;
 	    goto cleanup_and_fail;

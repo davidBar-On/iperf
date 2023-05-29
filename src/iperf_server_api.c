@@ -208,6 +208,7 @@ iperf_handle_message_server(struct iperf_test *test)
                 FD_CLR(sp->socket, &test->read_set);
                 FD_CLR(sp->socket, &test->write_set);
                 close(sp->socket);
+                sp->socket = -1; // [DBO] ???!!!!
             }
             test->reporter_callback(test);
 	    if (iperf_set_send_state(test, EXCHANGE_RESULTS) != 0)
@@ -238,6 +239,7 @@ iperf_handle_message_server(struct iperf_test *test)
                 FD_CLR(sp->socket, &test->read_set);
                 FD_CLR(sp->socket, &test->write_set);
                 close(sp->socket);
+                sp->socket = -1; // [DBO] ???!!!!
             }
             test->state = IPERF_DONE;
             break;
@@ -264,6 +266,7 @@ server_timer_proc(TimerClientData client_data, struct iperf_time *nowP)
         sp = SLIST_FIRST(&test->streams);
         SLIST_REMOVE_HEAD(&test->streams, streams);
         close(sp->socket);
+        sp->socket = -1; // [DBO] ???!!!!
         iperf_free_stream(sp);
     }
     close(test->ctrl_sck);
@@ -530,9 +533,9 @@ iperf_run_server(struct iperf_test *test)
             }
             timeout = &used_timeout;
         }
-printf("*** [TEST] iperf_run_server: BEFORE select() state=%d;\n", test->state);
+printf("*** [TEST] iperf_run_server: BEFORE select() state=%d;\n", test->state); fflush(stdout);
         result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
-printf("*** [TEST] iperf_run_server: AFTER select() state=%d, result=%d;\n", test->state, result);
+printf("*** [TEST] iperf_run_server: AFTER select() state=%d, result=%d;\n", test->state, result); fflush(stdout);
         if (result < 0 && errno != EINTR) {
             cleanup_server(test);
             i_errno = IESELECT;
