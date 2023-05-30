@@ -682,7 +682,7 @@ printf(";\n"); fflush(stdout);
 		// Unset non-blocking for non-UDP tests
 		if (test->protocol->id != Pudp) {
 		    SLIST_FOREACH(sp, &test->streams, streams) {
-			setnonblocking(sp->socket, 0);
+			// [DBO] ????!!! setnonblocking(sp->socket, 0);
 		    }
 		}
 
