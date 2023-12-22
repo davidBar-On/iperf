@@ -465,11 +465,11 @@ extern int gerror; /* error value from getaddrinfo(3), for use in internal error
 #if BYTE_ORDER == BIG_ENDIAN
 #define UDP_CONNECT_MSG 0x39383736
 #define UDP_CONNECT_REPLY 0x36373839
-#define UDP_CONNECT_REPLY_NEXT_PORT 0x39383735 // "9875": for Windows - indicates use next port
 #define LEGACY_UDP_CONNECT_REPLY 0xb168de3a
 #else
 #define UDP_CONNECT_MSG 0x36373839          // "6789" - legacy value was 123456789
 #define UDP_CONNECT_REPLY 0x39383736        // "9876" - legacy value was 987654321
+#define UDP_CONNECT_REPLY_NEXT_PORT 0x39383735 // "9875": for Windows - indicates use next port
 #define LEGACY_UDP_CONNECT_REPLY 987654321  // Old servers may still reply with the legacy value
 #endif
 
