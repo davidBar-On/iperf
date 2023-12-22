@@ -111,11 +111,11 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
                            "Server or Client:\n"
 #if defined(WINDOWS_ANY)
                            "  -p, --port      #[/#]     server port to listen on / connect to\n"
-#endif /* any Windows type */
                            "                            (optional for server UDP: pool size of ports starting with\n"
                            "                            port # - required for parallel UDP sterams under Windows)\n"
 #else
                            "  -p, --port      #         server port to listen on/connect to\n"
+#endif /* any Windows type */
                            "  -f, --format   [kmgtKMGT] format to report: Kbits, Mbits, Gbits, Tbits\n"
                            "  -i, --interval  #         seconds between periodic throughput reports\n"
                            "  -I, --pidfile file        write PID file\n"
