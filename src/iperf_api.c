@@ -65,7 +65,7 @@
 
 #if defined(WINDOWS_ANY)
 #define CPU_SETSIZE __CPU_SETSIZE
-#endif /* WINDOWS_ANY *
+#endif /* WINDOWS_ANY */
 
 #if defined(HAVE_SETPROCESSAFFINITYMASK)
 #include <Windows.h>
