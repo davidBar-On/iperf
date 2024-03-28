@@ -201,6 +201,7 @@ iperf_udp_send(struct iperf_stream *sp)
     int r;
     int       size = sp->settings->blksize;
     struct iperf_time before;
+    int sock_opt = sp->test->zerocopy ? MSG_ZEROCOPY : 0;
 
     iperf_time_now(&before);
 
@@ -234,7 +235,7 @@ iperf_udp_send(struct iperf_stream *sp)
 
     }
 
-    r = Nwrite(sp->socket, sp->buffer, size, Pudp);
+    r = Nsend(sp->socket, sp->buffer, size, Pudp, sock_opt);
 
     if (r <= 0) {
         --sp->packet_count;     /* Don't count messages that no data was sent from them.
@@ -507,7 +508,7 @@ iperf_udp_connect(struct iperf_test *test)
     int i, max_len_wait_for_reply;
 
     /* Create and bind our local socket. */
-    if ((s = netdial(test->settings->domain, Pudp, test->bind_address, test->bind_dev, test->bind_port, test->server_hostname, test->server_port, -1)) < 0) {
+    if ((s = netdial(test->settings->domain, Pudp, test->bind_address, test->bind_dev, test->bind_port, test->server_hostname, test->server_port, -1, test->zerocopy)) < 0) {
         i_errno = IESTREAMCONNECT;
         return -1;
     }

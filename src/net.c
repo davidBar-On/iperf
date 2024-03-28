@@ -124,11 +124,12 @@ timeout_connect(int s, const struct sockaddr *name, socklen_t namelen,
 
 /* create a socket */
 int
-create_socket(int domain, int proto, const char *local, const char *bind_dev, int local_port, const char *server, int port, struct addrinfo **server_res_out)
+create_socket(int domain, int proto, const char *local, const char *bind_dev, int local_port, const char *server, int port, struct addrinfo **server_res_out, int zerocopy)
 {
     struct addrinfo hints, *local_res = NULL, *server_res = NULL;
     int s, saved_errno;
     char portstr[6];
+    int opt;
 
     if (local) {
         memset(&hints, 0, sizeof(hints));
@@ -155,6 +156,19 @@ create_socket(int domain, int proto, const char *local, const char *bind_dev, in
 	    freeaddrinfo(local_res);
 	freeaddrinfo(server_res);
         return -1;
+    }
+
+    /* Setting should be done before the socket is conected */
+    if (zerocopy) {
+        opt = 1;
+        if (setsockopt(s, SOL_SOCKET, SO_ZEROCOPY, &opt, sizeof(opt)) < 0) {
+            saved_errno = errno;
+            close(s);
+            freeaddrinfo(local_res);
+            freeaddrinfo(server_res);
+            errno = saved_errno;
+            return -1;
+        }
     }
 
     if (bind_dev) {
@@ -234,12 +248,12 @@ create_socket(int domain, int proto, const char *local, const char *bind_dev, in
 
 /* make connection to server */
 int
-netdial(int domain, int proto, const char *local, const char *bind_dev, int local_port, const char *server, int port, int timeout)
+netdial(int domain, int proto, const char *local, const char *bind_dev, int local_port, const char *server, int port, int timeout, int zerocopy)
 {
     struct addrinfo *server_res = NULL;
     int s, saved_errno;
 
-    s = create_socket(domain, proto, local, bind_dev, local_port, server, port, &server_res);
+    s = create_socket(domain, proto, local, bind_dev, local_port, server, port, &server_res, zerocopy);
     if (s < 0) {
       return -1;
     }
@@ -461,11 +475,25 @@ Nread(int fd, char *buf, size_t count, int prot)
 int
 Nwrite(int fd, const char *buf, size_t count, int prot)
 {
+    return Nsend(fd, buf, count, prot, 0);
+}
+
+
+/*
+ *                      N S E N D
+ */
+
+int
+Nsend(int fd, const char *buf, size_t count, int prot, int sock_opt)
+{
     register ssize_t r;
     register size_t nleft = count;
 
     while (nleft > 0) {
-	r = write(fd, buf, nleft);
+        if (sock_opt)
+            r = send(fd, buf, nleft, sock_opt);
+        else
+	    r = write(fd, buf, nleft);
 	if (r < 0) {
 	    switch (errno) {
 		case EINTR:
