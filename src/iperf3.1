@@ -1,4 +1,4 @@
-.TH IPERF3 1 "September 2022" ESnet "User Manuals"
+.TH IPERF3 1 "November 2023" ESnet "User Manuals"
 .SH NAME
 iperf3 \- perform network throughput tests
 .SH SYNOPSIS
@@ -96,9 +96,11 @@ test by specifying the --get-server-output flag.
 Either the client or the server can produce its output in a JSON
 structure, useful for integration with other programs, by passing it
 the -J flag.
-Because the contents of the JSON structure are only completely known
+Normally the contents of the JSON structure are only competely known
 after the test has finished, no JSON output will be emitted until the
 end of the test.
+By enabling line-delimited JSON multiple objects will be emitted to
+provide a real-time parsable JSON output.
 .PP
 iperf3 has a (overly) large set of command-line options that can be
 used to set the parameters of a test.
@@ -157,6 +159,9 @@ give more detailed output
 .BR -J ", " --json " "
 output in JSON format
 .TP
+.BR --json-stream " "
+output in line-delimited JSON format
+.TP
 .BR --logfile " \fIfile\fR"
 send output to a log file.
 .TP
@@ -178,7 +183,7 @@ follow the \fB--timestamps\fR option with no whitespace intervening.
 .BR --rcv-timeout " \fI#\fR"
 set idle timeout for receiving data during active tests. The receiver
 will halt a test if no data is received from the sender for this
-number of ms (default to 12000 ms, or 2 minutes).
+number of ms (default to 120000 ms, or 2 minutes).
 .TP
 .BR --snd-timeout " \fI#\fR"
 set timeout for unacknowledged TCP data (on both test and control
@@ -326,7 +331,9 @@ bind data streams to a specific client port (for TCP and UDP only,
 default is to use an ephemeral port)
 .TP
 .BR -P ", " --parallel " \fIn\fR"
-number of parallel client streams to run. Note that iperf3 is single threaded, so if you are CPU bound, this will not yield higher throughput.
+number of parallel client streams to run. iperf3 will spawn off a
+separate thread for each test stream. Using multiple streams may
+result in higher throughput than a single stream.
 .TP
 .BR -R ", " --reverse
 reverse the direction of a test, so that the server sends data to the

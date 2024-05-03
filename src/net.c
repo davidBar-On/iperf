@@ -1,5 +1,5 @@
 /*
- * iperf, Copyright (c) 2014-2019, The Regents of the University of
+ * iperf, Copyright (c) 2014-2023, The Regents of the University of
  * California, through Lawrence Berkeley National Laboratory (subject
  * to receipt of any required approvals from the U.S. Dept. of
  * Energy).  All rights reserved.
@@ -145,6 +145,7 @@ create_socket(int domain, int proto, const char *local, const char *bind_dev, in
     if ((gerror = getaddrinfo(server, portstr, &hints, &server_res)) != 0) {
 	if (local)
 	    freeaddrinfo(local_res);
+        freeaddrinfo(server_res);
         return -1;
     }
 
@@ -405,6 +406,7 @@ Nread(int fd, char *buf, size_t count, int prot)
     while (nleft > 0) {
         r = read(fd, buf, nleft);
         if (r < 0) {
+            /* XXX EWOULDBLOCK can't happen without non-blocking sockets */
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
             else
@@ -469,6 +471,7 @@ Nwrite(int fd, const char *buf, size_t count, int prot)
 		case EINTR:
 		case EAGAIN:
 #if (EAGAIN != EWOULDBLOCK)
+                    /* XXX EWOULDBLOCK can't happen without non-blocking sockets */
 		case EWOULDBLOCK:
 #endif
 		return count - nleft;
@@ -539,6 +542,7 @@ Nsendfile(int fromfd, int tofd, const char *buf, size_t count)
 		case EINTR:
 		case EAGAIN:
 #if (EAGAIN != EWOULDBLOCK)
+                    /* XXX EWOULDBLOCK can't happen without non-blocking sockets */
 		case EWOULDBLOCK:
 #endif
 		if (count == nleft)
