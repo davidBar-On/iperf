@@ -99,7 +99,7 @@ const char usage_shortstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
                            "       iperf3 [-h|--help] [-v|--version]\n\n"
                            "Server or Client:\n"
-#if defined(WINDOWS_ANY)
+#if (defined(__CYGWIN__) || defined(_WIN32) || defined(_WIN64) || defined(__WINDOWS__))
                            "  -p, --port      #[/#]     server port to listen on / connect to\n"
                            "                            (optional for server UDP: pool size of ports starting with\n"
                            "                            port # - required for parallel UDP sterams under Windows)\n"
