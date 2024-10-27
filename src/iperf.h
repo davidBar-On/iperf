@@ -158,7 +158,8 @@ struct iperf_settings
     int       domain;               /* AF_INET or AF_INET6 */
     int       socket_bufsize;       /* window size for TCP */
     int       blksize;              /* size of read/writes (-l) */
-    iperf_size_t  rate;                 /* target data rate for application pacing*/
+    iperf_size_t  rate;             /* -b - target average data bitrate for application pacing */
+    iperf_size_t  max_rate;         /* -b - maximum sending bitrate */
     iperf_size_t  bitrate_limit;   /* server's maximum allowed total data rate for all streams*/
     double        bitrate_limit_interval;  /* interval for averaging total data rate */
     int           bitrate_limit_stats_per_interval;     /* calculated number of stats periods for averaging total data rate */
@@ -214,6 +215,7 @@ struct iperf_stream
     int       pending_size;     /* pending data to send */
     int       diskfile_fd;	/* file to send, file descriptor */
     int	      diskfile_left;	/* remaining file data on disk */
+    int64_t   last_send;                    /* time of last send in ns */
 
     /*
      * for udp measurements - This can be a structure outside stream, and
@@ -325,6 +327,8 @@ struct iperf_test
     int       prot_listener;
 
     int	      ctrl_sck_mss;			/* MSS for the control channel */
+
+    int64_t   min_time_to_green_light;           /* calculated [ns] per max_rate (only when it is set) */
 
 #if defined(HAVE_SSL)
     char      *server_authorized_users;

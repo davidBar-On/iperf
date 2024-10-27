@@ -610,6 +610,12 @@ iperf_run_client(struct iperf_test * test)
     if (iperf_connect(test) < 0)
         goto cleanup_and_fail;
 
+    /* Set min_time_to_green_light here as UDP blocksize may only set in iperf_connect() */
+    if (test->settings->max_rate > 0) {
+        test->min_time_to_green_light =
+            (double)SEC_TO_NS / ((double)test->settings->max_rate / (test->settings->blksize * 8));
+    }
+
     /* Begin calculating CPU utilization */
     cpu_util(NULL);
     if (test->mode != SENDER)

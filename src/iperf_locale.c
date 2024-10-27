@@ -160,9 +160,16 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 #endif /* HAVE_SCTP_H */
                            "  -u, --udp                 use UDP rather than TCP\n"
                            "  --connect-timeout #       timeout for control connection setup (ms)\n"
-                           "  -b, --bitrate #[KMG][/#]  target bitrate in bits/sec (0 for unlimited)\n"
+#if defined(HAVE_CLOCK_NANOSLEEP)
+                           "  -b, --bitrate #[KMG][/[#][/#[KMG]]  target average bitrate in bits/sec (0 for unlimited)\n"
+                           "                            (default %d Mbit/sec for UDP, unlimited for TCP)\n"
+                           "                            (optional slash and packet packet count for burst mode)\n"
+                           "                            (second optional max sending bitrate in bits/sec (0 for no max))\n"
+#else /* HAVE_CLOCK_NANOSLEEP */
+                           "  -b, --bitrate #[KMG][/#]  target average bitrate in bits/sec (0 for unlimited)\n"
                            "                            (default %d Mbit/sec for UDP, unlimited for TCP)\n"
                            "                            (optional slash and packet count for burst mode)\n"
+#endif /* HAVE_CLOCK_NANOSLEEP */
 #if !defined(HAVE_CLOCK_NANOSLEEP) && !defined(HAVE_NANOSLEEP)
 			   "  --pacing-timer #[KMG]     set the timing for pacing, in microseconds (default %d)\n"
 #else

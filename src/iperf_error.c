@@ -225,6 +225,10 @@ iperf_strerror(int int_errno)
         case IEBURST:
             snprintf(errstr, len, "invalid burst count (maximum = %d)", MAX_BURST);
             break;
+        case IERATE:
+            snprintf(errstr, len, "Illegal bitrate");
+            break;
+
         case IEENDCONDITIONS:
             snprintf(errstr, len, "only one test end condition (-t, -n, -k) may be specified");
             break;

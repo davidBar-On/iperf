@@ -164,6 +164,12 @@ iperf_get_test_rate(struct iperf_test *ipt)
 }
 
 uint64_t
+iperf_get_test_max_rate(struct iperf_test *ipt)
+{
+    return ipt->settings->max_rate;
+}
+
+uint64_t
 iperf_get_test_bitrate_limit(struct iperf_test *ipt)
 {
     return ipt->settings->bitrate_limit;
@@ -504,6 +510,12 @@ void
 iperf_set_test_rate(struct iperf_test *ipt, uint64_t rate)
 {
     ipt->settings->rate = rate;
+}
+
+void
+iperf_set_test_max_rate(struct iperf_test *ipt, uint64_t rate)
+{
+    ipt->settings->max_rate = rate;
 }
 
 void
@@ -1162,6 +1174,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char* comma;
 #endif /* HAVE_CPU_AFFINITY */
     char* slash;
+#if defined(HAVE_CLOCK_NANOSLEEP)
+    char* slash1;
+#endif /* HAVE_CLOCK_NANOSLEEP */
     char *p, *p1;
     struct xbind_entry *xbe;
     double farg;
@@ -1290,14 +1305,31 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		if (slash) {
 		    *slash = '\0';
 		    ++slash;
-		    test->settings->burst = atoi(slash);
-		    if (test->settings->burst <= 0 ||
-		        test->settings->burst > MAX_BURST) {
-			i_errno = IEBURST;
-			return -1;
+#if defined(HAVE_CLOCK_NANOSLEEP)
+                    slash1 = strchr(slash, '/');
+                    if (slash1) {
+                        *slash1 = '\0';
+		        ++slash1;
+                        test->settings->max_rate = unit_atof_rate(slash1);
+                    }
+#endif /* HAVE_CLOCK_NANOSLEEP */
+		    if (strlen(slash) > 0) {
+                        test->settings->burst = atoi(slash);
+                        if (test->settings->burst <= 0 ||
+                            test->settings->burst > MAX_BURST) {
+                            i_errno = IEBURST;
+                            return -1;
+                        }
 		    }
 		}
                 test->settings->rate = unit_atof_rate(optarg);
+                if ( test->settings->rate < 0 ||
+                     (test->settings->rate != 0 && test->settings->max_rate != 0 && test->settings->max_rate < test->settings->rate) ||
+                     (test->settings->rate == 0 && test->settings->max_rate != 0) )
+                {
+                    i_errno = IERATE;
+		    return -1;
+                }
 		rate_flag = 1;
 		client_flag = 1;
                 break;
@@ -1883,23 +1915,26 @@ iperf_check_throttle(struct iperf_stream *sp, struct iperf_time *nowP)
     uint64_t bits_per_second;
     int64_t missing_rate;
     uint64_t bits_sent;
+    struct iperf_test *test = sp->test;
     
 #if defined(HAVE_CLOCK_NANOSLEEP) || defined(HAVE_NANOSLEEP)
     struct timespec nanosleep_time;
-    int64_t time_to_green_light, delta_bits;
+    int64_t time_to_green_light = 0;
+    int64_t delta_bits;
     int ret;
 #endif /* HAVE_CLOCK_NANOSLEEP || HAVE_NANOSLEEP) */
 #if defined(HAVE_CLOCK_NANOSLEEP)
     int64_t ns;
+    int clock_gettime_rc = 1;
 #endif /* HAVE_CLOCK_NANOSLEEP */
 
-    if (sp->test->done || sp->test->settings->rate == 0)
+    if (test->done || test->settings->rate == 0)
         return;
     iperf_time_diff(&sp->result->start_time_fixed, nowP, &temp_time);
     seconds = iperf_time_in_secs(&temp_time);
     bits_sent = sp->result->bytes_sent * 8;
     bits_per_second = bits_sent / seconds;
-    missing_rate = sp->test->settings->rate - bits_per_second;
+    missing_rate = test->settings->rate - bits_per_second;
 
     if (missing_rate > 0) {
         sp->green_light = 1;
@@ -1914,9 +1949,44 @@ iperf_check_throttle(struct iperf_stream *sp, struct iperf_time *nowP)
         // Calclate time until next data send is required
         time_to_green_light = (SEC_TO_NS * delta_bits / sp->test->settings->rate);
         // Whether shouuld wait before next send
-        if (time_to_green_light >= 0) {
+    }
+
 #if defined(HAVE_CLOCK_NANOSLEEP)
-            if (clock_gettime(CLOCK_MONOTONIC, &nanosleep_time) == 0) {
+    if (test->settings->max_rate > 0) {
+        /* Make sure that if average bitrate is below the target, the sending rate
+         * will still not be above allowed maximum rate allowed.
+         */
+        if (missing_rate > 0) {
+            if ((clock_gettime_rc = clock_gettime(CLOCK_MONOTONIC, &nanosleep_time)) == 0) {
+                ns = (nanosleep_time.tv_sec * SEC_TO_NS) + nanosleep_time.tv_nsec;
+                /* `time_to_green_light` calculated here is the sleep time required not to send over max rate. */
+                if (sp->last_send != 0) {
+                    time_to_green_light = test->min_time_to_green_light -
+                                          (ns - sp->last_send);
+                }
+                /* `last_send` is the estimated time (not including overhead) of the send after the sleep.
+                 * That is done by adding `time_to_green_light` to the current time.
+                 * Note that `time_to_green_light` may be negative, because the process to send one message
+                 * may be greater than minimum sleep time. In this case, sleep is not called, but the "overflow"
+                 * should still be taken into account in the next send.  Otherwise the sending rate will be less
+                 * than the maximum allowed rate.
+                 */
+                sp->last_send = ns + time_to_green_light;
+                if (time_to_green_light < 0) {
+                    time_to_green_light = 0;
+                }
+            }
+        } else {
+            sp->last_send = 0;
+        }
+    }
+#endif /* HAVE_CLOCK_NANOSLEEP */
+
+    if (time_to_green_light <= 0) {
+        sp->green_light = 1;
+    } else {
+#if defined(HAVE_CLOCK_NANOSLEEP)
+            if (clock_gettime_rc == 0 || clock_gettime(CLOCK_MONOTONIC, &nanosleep_time) == 0) {
                 // Calculate absolute end of sleep time
                 ns = nanosleep_time.tv_nsec + time_to_green_light;
                 if (ns < SEC_TO_NS) {
@@ -1945,7 +2015,6 @@ iperf_check_throttle(struct iperf_stream *sp, struct iperf_time *nowP)
                 sp->green_light = 1;
             }
 #endif /* HAVE_CLOCK_NANOSLEEP else HAVE_NANOSLEEP */
-        }
     }
 #endif /* HAVE_CLOCK_NANOSLEEP || HAVE_NANOSLEEP */
 }
@@ -2303,6 +2372,10 @@ send_parameters(struct iperf_test *test)
 	    cJSON_AddNumberToObject(j, "len", test->settings->blksize);
 	if (test->settings->rate)
 	    cJSON_AddNumberToObject(j, "bandwidth", test->settings->rate);
+	if (test->settings->max_rate)
+	    cJSON_AddNumberToObject(j, "max_bandwidth", test->settings->max_rate);
+	if (test->min_time_to_green_light)
+	    cJSON_AddNumberToObject(j, "min_time_to_greenlight", test->min_time_to_green_light);
 	if (test->settings->fqrate)
 	    cJSON_AddNumberToObject(j, "fqrate", test->settings->fqrate);
 	if (test->settings->pacing_timer)
@@ -2419,6 +2492,10 @@ get_parameters(struct iperf_test *test)
 	    test->settings->blksize = j_p->valueint;
 	if ((j_p = cJSON_GetObjectItem(j, "bandwidth")) != NULL)
 	    test->settings->rate = j_p->valueint;
+	if ((j_p = cJSON_GetObjectItem(j, "max_bandwidth")) != NULL)
+	    test->settings->max_rate = j_p->valueint;
+	if ((j_p = cJSON_GetObjectItem(j, "min_time_to_greenlight")) != NULL)
+	    test->min_time_to_green_light = j_p->valueint;
 	if ((j_p = cJSON_GetObjectItem(j, "fqrate")) != NULL)
 	    test->settings->fqrate = j_p->valueint;
 	if ((j_p = cJSON_GetObjectItem(j, "pacing_timer")) != NULL)
@@ -3041,6 +3118,7 @@ iperf_defaults(struct iperf_test *testp)
     testp->settings->socket_bufsize = 0;    /* use autotuning */
     testp->settings->blksize = DEFAULT_TCP_BLKSIZE;
     testp->settings->rate = 0;
+    testp->settings->max_rate = 0;
     testp->settings->bitrate_limit = 0;
     testp->settings->bitrate_limit_interval = 5;
     testp->settings->bitrate_limit_stats_per_interval = 0;
@@ -3345,6 +3423,7 @@ iperf_reset_test(struct iperf_test *test)
     test->settings->socket_bufsize = 0;
     test->settings->blksize = DEFAULT_TCP_BLKSIZE;
     test->settings->rate = 0;
+    test->settings->max_rate = 0;
     test->settings->fqrate = 0;
     test->settings->burst = 0;
     test->settings->mss = 0;
@@ -4577,6 +4656,8 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
         return NULL;
     }
     sp->pending_size = 0;
+
+    sp->last_send = 0;
 
     /* Set socket */
     sp->socket = s;
