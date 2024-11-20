@@ -1,6 +1,32 @@
 iperf3 Release Notes
 ====================
 
+iperf-3.16 2023-11-30
+---------------------
+
+* Notable user-visible changes
+
+  * Multiple test streams started with -P/--parallel will now be
+    serviced by different threads. This allows iperf3 to take
+    advantage of multiple CPU cores on modern processors, and will
+    generally result in significant throughput increases (PR #1591).
+
+  * OpenSSL 3 is now detected at build time. If OpenSSL 3 is found,
+    various older, deprecated, APIs will not be used. iperf3 will
+    continue to work with OpenSSL 1.1.1. OpenSSL is used as a part
+    of the iperf3 authentication functionality (Issue #1300, PR
+    #1589).
+    
+  * The authorized users file used by the authentication functionality
+    is now checked for accessibility much earlier during the program
+    startup, as opposed to being checked near the start of a
+    test (Issue #1583, PR #1585).
+
+* Developer-visible changes
+
+  * BREAKING CHANGE: iperf3 now requires pthreads and C atomic
+    variables to compile and run.
+
 iperf-3.15 2023-09-14
 ---------------------
 
