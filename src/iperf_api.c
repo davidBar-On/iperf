@@ -2788,6 +2788,7 @@ JSON_read(int fd, int max_size)
                             json = cJSON_Parse(str);
                         }
                         else {
+printf("*** TEMP DEBUG - Parameters JSON: expected %d bytes but received %d bytes;\n", hsize, rc); // [DBO] ???
                             warning("JSON size of data read does not correspond to offered length");
                         }
 	            }
