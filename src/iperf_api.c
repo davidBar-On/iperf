@@ -2761,6 +2761,7 @@ JSON_read(int fd, int max_size)
     char *str;
     cJSON *json = NULL;
     int rc;
+    char msg_buf[256];
 
     /*
      * Read a four-byte integer, which is the length of the JSON to follow.
@@ -2788,8 +2789,8 @@ JSON_read(int fd, int max_size)
                             json = cJSON_Parse(str);
                         }
                         else {
-printf("*** TEMP DEBUG - Parameters JSON: expected %d bytes but received %d bytes;\n", hsize, rc); // [DBO] ???
-                            warning("JSON size of data read does not correspond to offered length");
+                            sprintf(msg_buf, "JSON size of data read does not correspond to offered length - expected %d bytes but received %d bytes; errno=%d", hsize, rc, errno);
+                            warning(msg_buf);
                         }
 	            }
 	            free(str);

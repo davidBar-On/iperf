@@ -398,12 +398,14 @@ Nread(int fd, char *buf, size_t count, int prot)
             return NET_HARDERROR;
         }
         if (r == 0) {
+printf("*** TEMP DEBUG: Nread() select() 1 returned 0 (timeout), errno=%d;\n", errno); // [DBO] ???
             return 0;
         }
     }
 
     while (nleft > 0) {
         r = read(fd, buf, nleft);
+printf("*** TEMP DEBUG: Nread() read() returned %ld, errno=%d;\n", r, errno); // [DBO] ???
         if (r < 0) {
             /* XXX EWOULDBLOCK can't happen without non-blocking sockets */
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
@@ -445,6 +447,7 @@ Nread(int fd, char *buf, size_t count, int prot)
                 return NET_HARDERROR;
             }
             if (r == 0) {
+printf("*** TEMP DEBUG: Nread() select() 2 returned 0 (timeout), errno=%d;\n", errno); // [DBO] ???
                 break;
             }
         }
