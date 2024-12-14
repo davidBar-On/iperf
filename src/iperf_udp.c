@@ -458,7 +458,7 @@ iperf_udp_accept(struct iperf_test *test)
 
     /* Let the client know we're ready "accept" another UDP "stream" */
     buf = UDP_CONNECT_REPLY;
-    if (write(s, &buf, sizeof(buf)) < 0) {
+    if (Nwrite(s, (char *)&buf, sizeof(buf), Pudp) < 0) {
         i_errno = IESTREAMWRITE;
         return -1;
     }
@@ -578,7 +578,7 @@ iperf_udp_connect(struct iperf_test *test)
     if (test->debug) {
         printf("Sending Connect message to Socket %d\n", s);
     }
-    if (write(s, &buf, sizeof(buf)) < 0) {
+    if (Nwrite(s, (char *)&buf, sizeof(buf), Pudp) < 0) {
         // XXX: Should this be changed to IESTREAMCONNECT?
         i_errno = IESTREAMWRITE;
         return -1;
@@ -592,7 +592,7 @@ iperf_udp_connect(struct iperf_test *test)
     if (test->reverse) /* In reverse mode allow few packets to have the "accept" response - to handle out of order packets */
         max_len_wait_for_reply += MAX_REVERSE_OUT_OF_ORDER_PACKETS * test->settings->blksize;
     do {
-        if ((sz = recv(s, &buf, sizeof(buf), 0)) < 0) {
+        if ((sz = Nread(s, (char *)&buf, sizeof(buf), Pudp)) < 0) {
             i_errno = IESTREAMREAD;
             return -1;
         }
