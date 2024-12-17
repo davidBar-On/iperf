@@ -2743,11 +2743,14 @@ JSON_write(int fd, cJSON *json)
 	if (Nwrite(fd, (char*) &nsize, sizeof(nsize), Ptcp) < 0)
 	    r = -1;
 	else {
+memset(str, 0, hsize); // [DBO] ???
+printf("*** TEMP DEBUG: set JSON string to zeros - strlen(str)=%ld;\n", strlen(str)); // [DBO] ???
 	    if (Nwrite(fd, str, hsize, Ptcp) < 0)
 		r = -1;
 	}
 	cJSON_free(str);
     }
+printf("*** TEMP DEBUG: JSON_write() length=%d, return code=%d;\n", hsize, r); // [DBO] ???
     return r;
 }
 
