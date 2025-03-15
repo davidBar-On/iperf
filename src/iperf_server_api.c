@@ -551,6 +551,9 @@ iperf_run_server(struct iperf_test *test)
     int64_t t_usecs;
     int64_t timeout_us;
     int64_t rcv_timeout_us;
+#if defined(HAVE_NANOSLEEP)
+    struct timespec nanosleep_time;
+#endif /* HAVE_NANOSLEEP */
 
     if (test->logfile) {
         if (iperf_open_logfile(test) < 0)
@@ -881,6 +884,18 @@ iperf_run_server(struct iperf_test *test)
 			i_errno = IETOTALRATE;
 			return -1;
 		    }
+
+                    // In UDP Reverse/Bidir modes, allow the last UDP_CONNECT_REPLY to be sent before loading the
+                    // interface with the test messages (increase probability that it will arrive to the Client).
+                    if (test->protocol->id == Pudp && (test->mode == BIDIRECTIONAL || test->mode == SENDER)) {
+#if defined(HAVE_NANOSLEEP)
+                        nanosleep_time.tv_sec = 0;
+                        nanosleep_time.tv_nsec = 200 * mS_TO_US * uS_TO_NS;
+                        nanosleep(&nanosleep_time, NULL);
+#else /* HAVE_NANOSLEEP */
+                        sleep(1);
+#endif /* HAVE_NANOSLEEP */
+                    }
 
 		    // Begin calculating CPU utilization
 		    cpu_util(NULL);
