@@ -3694,7 +3694,8 @@ iperf_reset_test(struct iperf_test *test)
     int i;
 
     // Do not use errno from previous test, for error cases that do not set errno (e.g. server receive illegal parameter from the client)
-    errno = 0;    iperf_close_logfile(test);
+    errno = 0;    
+    iperf_close_logfile(test);
 
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {
